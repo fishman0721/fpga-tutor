@@ -94,8 +94,12 @@
   .drill-box-title { fill: var(--fg); font-size: 16px; font-weight: 600; }
   .drill-box-sub { fill: var(--muted); font-size: 11.5px; }
   .drill-box-hint { fill: var(--accent); font-size: 12px; }
-  .drill-wire-label { fill: var(--muted); font-size: 12.5px; }
-  .drill-port-label { fill: var(--muted); font-size: 11px; }
+  .drill-wire-label { fill: var(--muted); font-size: 11.5px; }
+  .drill-port-label { fill: var(--muted); font-size: 10.5px; }
+  /* 文字描边光晕：即使被信号线穿过也能清晰可读 */
+  .drill-box-title, .drill-box-sub, .drill-box-hint, .drill-wire-label, .drill-port-label {
+    paint-order: stroke; stroke: var(--bg); stroke-width: 3.5; stroke-linejoin: round;
+  }
   .drill-head { margin-bottom: 6px; }
   .drill-title { color: var(--accent); font-weight: 600; font-size: 14px; }
   .drill-file { font-size: 12px; }
@@ -330,12 +334,22 @@ const PORTS = {};
     scene.boxes.forEach(bx => {
       const ins = inMap[bx.id] || [], outs = outMap[bx.id] || [];
       const topY = bx.y + 44, botY = bx.y + bx.h - 14;
-      const midY = (topY + botY) / 2;
-      // 输入端口占上半区、输出端口占下半区，避免进出线贴在一起
-      const inTop = topY, inBot = Math.max(topY + 4, midY - 4);
-      const outTop = Math.min(botY - 4, midY + 4), outBot = botY;
-      const inYs = distribute(ins.length, inTop, inBot);
-      const outYs = distribute(outs.length, outTop, outBot);
+      const total = botY - topY;
+      const nin = ins.length, nout = outs.length;
+      // 输入/输出端口按数量自适应分配纵向范围，端口名行距更均匀
+      let inTop, inBot, outTop, outBot;
+      if (nin > 0 && nout > 0) {
+        const inShare = total * nin / (nin + nout);
+        inTop = topY; inBot = Math.min(topY + inShare, botY - 6);
+        outTop = Math.min(Math.max(inBot + 4, topY + 6), botY - 6);
+        outBot = botY;
+      } else if (nin > 0) {
+        inTop = topY; inBot = botY; outTop = botY; outBot = botY;
+      } else {
+        inTop = topY; inBot = topY; outTop = topY; outBot = botY;
+      }
+      const inYs = distribute(nin, inTop, inBot);
+      const outYs = distribute(nout, outTop, outBot);
       ins.forEach((wi, i) => { portY['i' + wi] = inYs[i]; });
       outs.forEach((wi, i) => { portY['o' + wi] = outYs[i]; });
     });
