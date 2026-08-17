@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>36_sobel · FPGA 学习页</title>
+<style>
+  :root {
+    --bg: #0e141b; --panel: #161f2a; --panel2: #1b2634;
+    --line: #26334a; --fg: #dce6f2; --muted: #8fa3bd;
+    --accent: #4cc2ff; --accent2: #7ee0a3; --warn: #e3b341; --danger: #f47067;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg); color: var(--fg);
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    line-height: 1.65; font-size: 15px;
+  }
+  /* 布局 */
+  #app { display: flex; min-height: 100vh; }
+  nav#toc {
+    width: 260px; flex-shrink: 0; position: sticky; top: 0; height: 100vh;
+    overflow-y: auto; background: var(--panel); border-right: 1px solid var(--line);
+    padding: 20px 14px;
+  }
+  nav#toc h2 { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin: 14px 8px 8px; }
+  nav#toc a {
+    display: block; color: var(--muted); text-decoration: none; font-size: 14px;
+    padding: 6px 8px; border-radius: 6px; margin-bottom: 2px;
+  }
+  nav#toc a:hover, nav#toc a.active { color: var(--accent); background: var(--panel2); }
+  main { flex: 1; min-width: 0; padding: 28px 36px 80px; max-width: 960px; }
+  header { border-bottom: 1px solid var(--line); padding-bottom: 16px; margin-bottom: 26px; }
+  header h1 { font-size: 26px; color: var(--accent); }
+  header .meta { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  section { margin-bottom: 44px; scroll-margin-top: 16px; }
+  section > h2 {
+    font-size: 20px; color: var(--accent2); margin-bottom: 14px; padding-bottom: 6px;
+    border-bottom: 1px solid var(--line);
+  }
+  h3 { color: var(--fg); margin: 18px 0 8px; font-size: 16px; }
+  p { margin: 8px 0; color: var(--fg); }
+  .muted { color: var(--muted); }
+  /* 卡片与表格 */
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 12px 0; }
+  .card h4 { color: var(--accent); font-size: 15px; margin-bottom: 6px; font-family: Consolas, monospace; }
+  .card .role { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13.5px; }
+  th, td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--panel2); color: var(--accent); font-weight: 600; white-space: nowrap; }
+  tr:nth-child(even) td { background: rgba(255,255,255,.02); }
+  pre {
+    background: #0b1118; border: 1px solid var(--line); border-radius: 8px;
+    padding: 14px; overflow-x: auto; font-size: 13px; line-height: 1.55;
+    font-family: Consolas, "Courier New", monospace; color: #c9d7e8; margin: 10px 0;
+  }
+  code { font-family: Consolas, "Courier New", monospace; font-size: .92em; }
+  p code, li code, td code { background: var(--panel2); padding: 1px 5px; border-radius: 4px; color: var(--accent); }
+  .note { border-left: 3px solid var(--warn); background: rgba(227,179,65,.08); padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 14px; }
+  /* 层级示意图 */
+  .tree { font-family: Consolas, monospace; font-size: 13.5px; line-height: 1.7; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px; overflow-x: auto; white-space: pre; color: #c9d7e8; }
+  .dia-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin: 12px 0; overflow-x: auto; }
+  .dia-wrap svg { display: block; width: 100%; height: auto; max-width: 920px; }
+  .wire { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 7 7; animation: wireflow 1.2s linear infinite; }
+  @keyframes wireflow { to { stroke-dashoffset: -28; } }
+  .dia-box { fill: var(--panel2); stroke: var(--line); }
+  .dia-box-dut { fill: #1b2634; stroke: var(--accent); }
+  .dia-box-dash { fill: #1b2634; stroke: var(--muted); stroke-dasharray: 5 4; }
+  .dia-title { fill: var(--accent); font-size: 14px; font-weight: 600; }
+  .dia-sub { fill: var(--muted); font-size: 10.5px; }
+  .dia-txt { fill: var(--fg); font-size: 11px; }
+  .dia-txt-mono { fill: #c9d7e8; font-size: 10.5px; font-family: Consolas, monospace; }
+  .dia-lbl { fill: var(--muted); font-size: 11px; }
+  .dia-port { fill: var(--accent2); }
+  .dia-arrow { fill: var(--accent); }
+  /* 可下钻层级框图 */
+  .drill-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 12px 0; }
+  #drillCrumb { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .drill-crumb {
+    background: var(--panel2); color: var(--muted); border: 1px solid var(--line);
+    border-radius: 20px; padding: 3px 12px; font-size: 12.5px; cursor: pointer; font-family: inherit;
+  }
+  .drill-crumb:hover, .drill-crumb.current { color: var(--accent); border-color: var(--accent); }
+  .drill-toolbar { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .drill-toolbar .zoom-val { color: var(--muted); font-size: 12.5px; min-width: 46px; text-align: center; }
+  #drillScene { overflow-x: auto; }
+  #drillScene svg { display: block; height: auto; }
+  .drill-box { fill: var(--panel2); stroke: var(--line); stroke-width: 1.5; }
+  .drill-box.deep { stroke: var(--accent); stroke-width: 2; }
+  .drill-box.ext { fill: #1b2634; stroke: var(--muted); stroke-dasharray: 5 4; }
+  .drill-g { cursor: pointer; }
+  .drill-g:hover .drill-box { stroke: var(--accent2); }
+  .drill-box-title { fill: var(--fg); font-size: 16px; font-weight: 600; }
+  .drill-box-sub { fill: var(--muted); font-size: 11.5px; }
+  .drill-box-hint { fill: var(--accent); font-size: 12px; }
+  .drill-wire-label { fill: var(--muted); font-size: 11.5px; }
+  .drill-port-label { fill: var(--muted); font-size: 10.5px; }
+  /* 文字描边光晕：即使被信号线穿过也能清晰可读 */
+  .drill-box-title, .drill-box-sub, .drill-box-hint, .drill-wire-label, .drill-port-label {
+    paint-order: stroke; stroke: var(--bg); stroke-width: 3.5; stroke-linejoin: round;
+  }
+  .drill-head { margin-bottom: 6px; }
+  .drill-title { color: var(--accent); font-weight: 600; font-size: 14px; }
+  .drill-file { font-size: 12px; }
+  .drill-desc { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  #drillHint { color: var(--muted); font-size: 12px; margin-top: 8px; }
+  #drillPorts { margin-top: 10px; border-top: 1px dashed var(--line); padding-top: 8px; }
+  .drill-port-title { margin-bottom: 6px; font-size: 14px; }
+  .drill-port-none { color: var(--muted); font-size: 13px; }
+  /* 任务清单 */
+  #taskList { list-style: none; }
+  #taskList li {
+    display: flex; gap: 10px; align-items: flex-start; background: var(--panel);
+    border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; margin: 8px 0;
+  }
+  #taskList input { margin-top: 4px; accent-color: var(--accent2); width: 16px; height: 16px; flex-shrink: 0; cursor: pointer; }
+  #taskList li.done .task-text { text-decoration: line-through; color: var(--muted); }
+  .progress { height: 6px; background: var(--panel2); border-radius: 3px; overflow: hidden; margin: 10px 0 4px; }
+  .progress > div { height: 100%; width: 0; background: var(--accent2); transition: width .25s; }
+  #taskCount { font-size: 13px; color: var(--muted); }
+  /* 测验 */
+  .quiz-item { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 14px 0; }
+  .quiz-item .q { font-weight: 600; margin-bottom: 8px; }
+  .quiz-item label { display: block; padding: 5px 8px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+  .quiz-item label:hover { background: var(--panel2); }
+  .quiz-item .feedback { display: none; margin-top: 8px; font-size: 13.5px; border-radius: 6px; padding: 8px 12px; }
+  .quiz-item.correct .feedback { display: block; background: rgba(126,224,163,.1); color: var(--accent2); border: 1px solid rgba(126,224,163,.3); }
+  .quiz-item.wrong .feedback { display: block; background: rgba(244,112,103,.1); color: var(--danger); border: 1px solid rgba(244,112,103,.3); }
+  .quiz-item .explain { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  #quizScore { font-size: 13px; color: var(--muted); }
+  /* 术语表 */
+  #glossary dt { color: var(--accent); font-weight: 600; margin-top: 12px; font-family: Consolas, monospace; }
+  #glossary dd { color: var(--fg); margin: 4px 0 0 0; font-size: 14px; }
+  /* 笔记 */
+  #noteArea {
+    width: 100%; min-height: 140px; background: var(--panel); color: var(--fg);
+    border: 1px solid var(--line); border-radius: 8px; padding: 12px; font-size: 14px;
+    font-family: inherit; resize: vertical;
+  }
+  #noteArea:focus { outline: 1px solid var(--accent); }
+  #noteStatus { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .btn {
+    background: var(--panel2); color: var(--fg); border: 1px solid var(--line);
+    border-radius: 6px; padding: 6px 14px; font-size: 13px; cursor: pointer; margin: 4px 4px 4px 0;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); padding-top: 14px; margin-top: 40px; }
+  @media (max-width: 860px) {
+    #app { flex-direction: column; }
+    nav#toc { position: static; width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--line); }
+    main { padding: 20px 16px 60px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- 目录（由 JS 自动生成） -->
+  <nav id="toc">
+    <h2>目录</h2>
+    <div id="tocLinks"></div>
+  </nav>
+
+  <main>
+    <header>
+      <h1>36_sobel —— 串口图像传输 + Sobel 边缘检测 + VGA 显示</h1>
+      <div class="meta">FPGA 学习页面 · 生成日期：2026-08-17 · 由 fpga-tutor 技能生成</div>
+    </header>
+
+    <!-- ① 工程概览 -->
+    <section id="overview" data-title="工程概览">
+      <h2>① 工程概览</h2>
+      <p><b>一句话功能</b>：PC 通过串口（9600 bps）把一张 100×100 的 8bit 灰度图发给 FPGA，<code>sobel_ctrl</code> 用 Sobel 算子做边缘检测并阈值二值化（黑/白），结果一路由 <code>vga</code> 模块存入 RAM 后以 640×480 VGA 实时显示，另一路由 <code>uart_tx</code> 回传 PC——一个完整的「串口收发 + 图像处理 + 视频显示」学习工程。</p>
+      <p><b>硬件平台</b>：野火「征途 Pro」开发板，Altera Cyclone IV E（EP4CE10F17C8N）；板载 50 MHz 晶振；VGA 接口；USB 转串口。</p>
+      <p><b>时钟方案</b>：PLL（<code>clk_gen</code>）把 50 MHz 输入分出两个时钟：<code>c0 = vga_clk</code> 25 MHz（VGA 像素时钟）与 <code>c1 = clk_50m</code>（系统逻辑时钟）；复位 <code>rst_n = sys_rst_n &amp; locked</code>——PLL 锁定后才释放复位，避免未锁定期间跑逻辑。</p>
+      <p><b>关键参数</b>：串口 9600 bps；图片 100×100（<code>LENGTH_P / WIDE_P = 100</code>）；Sobel 阈值 <code>THRESHOLD = 8'b000_011_00</code>；VGA 640×480@60Hz（25 MHz 像素时钟，行 800 / 场 525 总时序）；检测结果黑白二值化（<code>BLACK / WHITE</code>）。</p>
+      <div class="note">💡 学习建议：先读概览，再进入第③章的框图逐层点击下钻；每看完一个模块，回到学习任务清单勾选完成。</div>
+    </section>
+
+    <!-- ② 目录结构 -->
+    <section id="structure" data-title="目录结构">
+      <h2>② 工程目录结构</h2>
+      <div class="tree">36_sobel/
+├── rtl/
+│   ├── sobel.v              # 顶层：例化 clk_gen / uart_rx / sobel_ctrl / vga / uart_tx
+│   ├── sobel_ctrl.v         # Sobel 边缘检测（行缓存 FIFO×2 + 3×3 窗口 + 阈值二值化）
+│   ├── uart_rx.v            # 串口接收（9600bps，串转并）
+│   ├── uart_tx.v            # 串口发送（并转串）
+│   └── vga/
+│       ├── vga.v            # VGA 显示顶层（例化 vga_ctrl + vga_pic）
+│       ├── vga_ctrl.v       # VGA 时序控制（行/场同步、坐标、RGB 输出）
+│       └── vga_pic.v        # 图像数据生成（RAM 读回 + 背景彩条 + 输出选择）
+├── quartus_prj/             # Quartus 13.0 工程（Cyclone IV E）
+│   ├── sobel.qsf            # 工程设置 + 引脚约束（TOP_LEVEL_ENTITY = sobel）
+│   └── ip_core/
+│       ├── clk_gen/         # PLL IP：50M → 25M(vga) / 50M
+│       ├── fifo_pic/        # FIFO IP：两行行缓存
+│       └── ram_pic/         # 双时钟 RAM IP：图像存储
+├── matlab/
+│   ├── sobel.m              # 生成 100×100 测试图 data_test.txt（hex，10000 点）
+│   └── data_test.txt        # 测试图像数据（供仿真/上位机发送）
+├── sim/
+│   └── tb_sobel.v           # 仿真平台：$readmemh 读图 + task 模拟串口逐字节发送
+└── doc/
+    └── sobel.vsdx           # 教程框图（本页第③章框图风格的参考来源）</div>
+      <p class="muted">说明：IP 核、仿真与编译产物目录仅列出名称，学习重点在 RTL 与约束文件。</p>
+    </section>
+
+    <!-- ③ 模块层级（可点击下钻） -->
+    <section id="hierarchy" data-title="模块层级">
+      <h2>③ 模块层级（可点击下钻）</h2>
+      <p>系统模块框图：<b>点击带「点击进入 ↓」的方块</b>进入其内部框图，逐层深入，每一层都是信号流动图；面包屑或 Esc 返回。</p>
+      <div class="drill-wrap">
+        <div class="drill-toolbar">
+          <button class="btn" id="drillZoomOut" type="button">缩小 −</button>
+          <span class="zoom-val" id="drillZoomVal">100%</span>
+          <button class="btn" id="drillZoomIn" type="button">放大 ＋</button>
+          <button class="btn" id="drillZoomFit" type="button">适应</button>
+        </div>
+        <div id="drillCrumb"></div>
+        <div class="drill-head" id="drillInfo"></div>
+        <div id="drillScene"></div>
+        <div id="drillPorts"></div>
+        <div id="drillHint"></div>
+      </div>
+      <p class="muted">各模块职责速览：</p>
+      <div class="card">
+        <h4>sobel（顶层）</h4>
+        <div class="role">rtl/sobel.v · 顶层模块（TOP_LEVEL_ENTITY）</div>
+        <p><b>职责</b>：例化全部功能模块并连接数据通路：<code>uart_rx</code> 收到的图片字节 → <code>sobel_ctrl</code> 检测边缘 → <code>vga</code> 显示 / <code>uart_tx</code> 回传；用 <code>rst_n = sys_rst_n &amp; locked</code> 统一复位。</p>
+        <p><b>一句话解读</b>：顶层不写任何算法，只做「组装」——看顶层代码就是看整机数据流。</p>
+      </div>
+      <div class="card">
+        <h4>clk_gen（PLL）</h4>
+        <div class="role">quartus_prj/ip_core/clk_gen/ · Quartus PLL IP</div>
+        <p><b>职责</b>：50 MHz 晶振时钟 → <code>c0</code> 25 MHz（VGA 像素时钟）、<code>c1</code> 50 MHz（系统逻辑时钟）、<code>locked</code> 锁定指示。</p>
+        <p><b>一句话解读</b>：VGA 显示和逻辑处理用不同频率的时钟，PLL 是 FPGA 里的「时钟工厂」。</p>
+      </div>
+      <div class="card">
+        <h4>uart_rx / uart_tx（串口收发）</h4>
+        <div class="role">rtl/uart_rx.v · rtl/uart_tx.v · 9600bps 参数化收发</div>
+        <p><b>职责</b>：rx 把串行位流按波特率采样、拼成 8bit 字节（<code>po_data + po_flag</code>）；tx 反向把并行字节逐位发出。</p>
+        <p><b>一句话解读</b>：串口是「慢速搬运工」——一帧 10 位（起始+8 数据+停止），是图像数据的入口和出口。</p>
+      </div>
+      <div class="card">
+        <h4>sobel_ctrl（Sobel 边缘检测）</h4>
+        <div class="role">rtl/sobel_ctrl.v · 本工程核心算法模块</div>
+        <p><b>职责</b>：两个 FIFO 构成两行缓存，与当前行组成 3×3 窗口；计算 <code>Gx / Gy</code> → <code>Gxy = |Gx|+|Gy|</code> → 与 <code>THRESHOLD</code> 比较，输出黑/白二值图像。</p>
+        <p><b>一句话解读</b>：图像卷积在 FPGA 上的标准套路——「行缓存 + 滑动窗口 + 乘加」，在框图里点它可下钻看流水线。</p>
+      </div>
+      <div class="card">
+        <h4>vga_ctrl（VGA 时序控制）</h4>
+        <div class="role">rtl/vga/vga_ctrl.v · 行/场同步生成</div>
+        <p><b>职责</b>：按 VGA 640×480@60Hz 时序产生 <code>hsync / vsync</code>、有效区坐标 <code>pix_x / pix_y</code>，并把像素数据随同步信号输出到 <code>rgb</code>。</p>
+        <p><b>一句话解读</b>：两个计数器（行 800 拍、场 525 行）+ 比较器就是 VGA 时序的全部秘密。</p>
+      </div>
+      <div class="card">
+        <h4>vga_pic（图像数据生成）</h4>
+        <div class="role">rtl/vga/vga_pic.v · RAM 读回 + 彩条背景</div>
+        <p><b>职责</b>：sobel 结果按 <code>pi_flag</code> 写入双时钟 RAM；显示时在图片区域（640×480 中央 98×98）读 RAM 输出，其余区域输出 10 段彩条背景。</p>
+        <p><b>一句话解读</b>：写时钟 50M、读时钟 25M 的「异步双时钟 RAM」是跨时钟域传数据的常用 IP。</p>
+      </div>
+    </section>
+
+    <!-- ④ 端口与信号 -->
+    <section id="signals" data-title="端口与信号">
+      <h2>④ 端口与信号</h2>
+      <p>顶层模块端口：</p>
+      <table>
+        <tr><th>信号</th><th>方向</th><th>位宽</th><th>作用</th></tr>
+        <tr><td><code>sys_clk</code></td><td>input</td><td>1</td><td>板载 50 MHz 晶振时钟</td></tr>
+        <tr><td><code>sys_rst_n</code></td><td>input</td><td>1</td><td>按键复位，低有效</td></tr>
+        <tr><td><code>rx</code></td><td>input</td><td>1</td><td>串口接收线（9600 bps）</td></tr>
+        <tr><td><code>tx</code></td><td>output</td><td>1</td><td>串口发送线（回传检测结果）</td></tr>
+        <tr><td><code>hsync</code></td><td>output</td><td>1</td><td>VGA 行同步信号</td></tr>
+        <tr><td><code>vsync</code></td><td>output</td><td>1</td><td>VGA 场同步信号</td></tr>
+        <tr><td><code>rgb</code></td><td>output</td><td>8</td><td>VGA 像素输出（R3/G3/B2）</td></tr>
+      </table>
+      <h3>关键内部信号</h3>
+      <table>
+        <tr><th>信号</th><th>来源</th><th>作用</th></tr>
+        <tr><td><code>vga_clk / clk_50m</code></td><td>clk_gen（c0 / c1）</td><td>25 MHz 像素时钟 / 50 MHz 逻辑时钟</td></tr>
+        <tr><td><code>locked / rst_n</code></td><td>clk_gen / 组合逻辑</td><td>PLL 锁定指示；rst_n = sys_rst_n &amp; locked</td></tr>
+        <tr><td><code>pi_data[7:0] / pi_flag</code></td><td>uart_rx 输出</td><td>图片字节流与有效标志 → sobel_ctrl</td></tr>
+        <tr><td><code>po_data[7:0] / po_flag</code></td><td>sobel_ctrl 输出</td><td>二值化结果 → vga 显示 + uart_tx 回传</td></tr>
+        <tr><td><code>pix_x / pix_y[9:0]</code></td><td>vga_ctrl 输出</td><td>VGA 有效区坐标 → vga_pic 选址</td></tr>
+        <tr><td><code>pix_data[7:0]</code></td><td>vga_pic 输出</td><td>最终像素数据 → vga_ctrl 输出</td></tr>
+      </table>
+    </section>
+
+    <!-- ⑤ 关键代码解读 -->
+    <section id="code" data-title="关键代码解读">
+      <h2>⑤ 关键代码解读</h2>
+      <h3>1. 顶层组装：rst_n = sys_rst_n &amp; locked</h3>
+      <pre>assign  rst_n = (sys_rst_n &amp; locked);   // PLL 锁定后才释放复位
+clk_gen  clk_gen_inst (.inclk0(sys_clk), .c0(vga_clk), .c1(clk_50m), .locked(locked));
+uart_rx  uart_rx_inst  (.sys_clk(clk_50m), .rx(rx), .po_data(pi_data), .po_flag(pi_flag));
+sobel_ctrl sobel_ctrl_inst (.pi_data(pi_data), .pi_flag(pi_flag), .po_data(po_data), .po_flag(po_flag));
+vga      vga_inst      (.vga_clk(vga_clk), .sys_clk(clk_50m), .pi_data(po_data), .hsync(hsync), .vsync(vsync), .rgb(rgb));
+uart_tx  uart_tx_inst  (.sys_clk(clk_50m), .pi_data(po_data), .pi_flag(po_flag), .tx(tx));</pre>
+      <p>顶层就是「数据流地图」：<code>rx → uart_rx → sobel_ctrl → vga / uart_tx</code>。注意 <code>rst_n</code> 把 <code>locked</code> 与按键复位相与——PLL 未锁定时各模块保持复位，这是所有 PLL 工程的标配做法。</p>
+      <h3>2. uart_rx：双级寄存器同步消亚稳态</h3>
+      <pre>always@(posedge sys_clk or negedge sys_rst_n)
+    if(sys_rst_n == 1'b0) begin
+        rx_reg1 &lt;= 1'b1;  rx_reg2 &lt;= 1'b1;  rx_reg3 &lt;= 1'b1;
+    end else begin
+        rx_reg1 &lt;= rx;    rx_reg2 &lt;= rx_reg1;  rx_reg3 &lt;= rx_reg2;
+    end
+assign start_nedge = rx_reg3 &amp;&amp; (~rx_reg2);   // 检测起始位下降沿</pre>
+      <p>串口线相对系统时钟是异步信号，第一级寄存器可能采到亚稳态，所以先用<b>两级寄存器</b>同步；再通过 <code>rx_reg3 &amp;&amp; ~rx_reg2</code> 检测起始位下降沿，之后按波特率计数器在每位中点采样，拼出 8bit 数据。</p>
+      <h3>3. sobel_ctrl：行/场计数与 FIFO 写读使能</h3>
+      <pre>if((cnt_v == 8'd0) &amp;&amp; (pi_flag == 1'b1))  wr_en1 &lt;= 1'b1;   // 第0行写入fifo1
+if((cnt_v &gt;= 8'd1) &amp;&amp; (cnt_v &lt;= 98) &amp;&amp; (pi_flag == 1'b1))  wr_en2 &lt;= 1'b1;  // 第1..98行写入fifo2
+if((pi_flag == 1'b1) &amp;&amp; (cnt_v &gt;= 8'd2) &amp;&amp; (cnt_v &lt;= 99))  rd_en &lt;= 1'b1;    // 第2行起开始读出</pre>
+      <p>图像逐行到达：第 0 行进 fifo1，第 1 行起进 fifo2，第 2 行起边写边读——于是任意时刻 fifo1 存「上一行」、fifo2 存「上上行」，加上当前行正好凑齐 3 行。行缓存深度 = 行长度 100。</p>
+      <h3>4. 3×3 窗口：三路数据拼成 a1..c3</h3>
+      <pre>a1 &lt;= data_out1_dly;  b1 &lt;= data_out2_dly;  c1 &lt;= pi_data_dly;   // 第1列
+a2 &lt;= a1;  b2 &lt;= b1;  c2 &lt;= c1;                                   // 右移
+a3 &lt;= a2;  b3 &lt;= b2;  c3 &lt;= c2;                                   // 第3列</pre>
+      <p>三行数据各经一拍延迟对齐后，用 9 个寄存器构成 3×3 滑动窗口：<code>a 行 = 上上行、b 行 = 上行、c 行 = 当前行</code>，每个时钟右移一列。这就是图像卷积在 FPGA 里的标准实现。</p>
+      <h3>5. Gx / Gy 与 Gxy = |Gx| + |Gy|</h3>
+      <pre>gx &lt;= a3 - a1 + ((b3 - b1) &lt;&lt; 1) + c3 - c1;      // Sobel 水平核
+gy &lt;= a1 - c1 + ((a2 - c2) &lt;&lt; 1) + a3 - c3;      // Sobel 垂直核
+// gxy 按 gx/gy 符号分四路，等价于 |gx| + |gy|</pre>
+      <p>Sobel 算子 = 3×3 卷积核（水平 <code>[-1 0 1; -2 0 2; -1 0 1]</code>、垂直转置）。代码里用 <code>gx[8]</code> 判断正负、按补码取绝对值相加，避免减法器处理负数——省资源的小技巧。</p>
+      <h3>6. 阈值二值化与 VGA 行时序</h3>
+      <pre>if((gxy &gt;= THRESHOLD) &amp;&amp; (compare_flag == 1'b1)) po_data &lt;= BLACK;   // 8'b0000_0000
+else if(compare_flag == 1'b1)                    po_data &lt;= WHITE;   // 8'b1111_1111
+// vga_ctrl：hsync = (cnt_h &lt;= 95) ? 1 : 0;  cnt_h 从 0 计到 799（H_TOTAL=800）</pre>
+      <p>梯度幅值 ≥ 阈值判为边缘（黑色），否则白色——这就是「边缘检测 → 二值化」。VGA 侧同理：行计数器 0..799、场计数器 0..524，前 96 拍 hsync 拉低（同步脉冲），其余按 后沿/显示区/前沿 划分，在有效区内按坐标输出像素。</p>
+    </section>
+
+    <!-- ⑥ 学习任务清单 -->
+    <section id="tasks" data-title="学习任务清单">
+      <h2>⑥ 学习任务清单</h2>
+      <div class="progress"><div id="taskBar"></div></div>
+      <div id="taskCount"></div>
+      <ul id="taskList"></ul>
+      <button class="btn" id="taskReset">重置任务进度</button>
+      <p class="muted">勾选状态保存在浏览器本地，刷新页面不会丢失。</p>
+    </section>
+
+    <!-- ⑦ 小测验 -->
+    <section id="quiz" data-title="小测验">
+      <h2>⑦ 小测验</h2>
+      <div id="quizList"></div>
+      <div id="quizScore"></div>
+      <button class="btn" id="quizReset">重新测验</button>
+    </section>
+
+    <!-- ⑧ 术语表 -->
+    <section id="glossary" data-title="术语表">
+      <h2>⑧ 术语表</h2>
+      <dl id="glossaryList"></dl>
+    </section>
+
+    <!-- ⑨ 我的笔记 -->
+    <section id="notes" data-title="我的笔记">
+      <h2>⑨ 我的笔记</h2>
+      <textarea id="noteArea" placeholder="在这里记录你的疑问、心得、待办……内容自动保存在浏览器本地。"></textarea>
+      <div id="noteStatus"></div>
+    </section>
+
+    <footer>由 fpga-tutor 生成 · 单文件离线学习页面 · 数据仅保存在本浏览器</footer>
+  </main>
+</div>
+
+<script>
+// ================== 数据区（由 fpga-tutor 生成时填充） ==================
+
+// 学习任务清单：从易到难
+const TASKS = [
+  '打开 Quartus 工程，用 RTL Viewer 观察 sobel 顶层例化网络，对照第③章框图逐模块找到对应代码',
+  '手算波特率计数器：BAUD_CNT_MAX = 50M / 9600 ≈ 5208，说出 uart_rx 在每一位的哪个时刻采样最稳',
+  '修改 sobel_ctrl 的 THRESHOLD（如 8\'b000_001_00）重新编译下载，观察边缘变粗还是变细，说出原因',
+  '用串口助手发送 matlab/data_test.txt（10000 字节），对比 VGA 显示与 uart_tx 回传的数据是否一致',
+  '把 vga_pic 彩条生成里的 RED / GREEN / BLUE 顺序调换，观察屏幕彩条顺序变化',
+  '给同学讲清楚：为什么 3×3 窗口需要两个 FIFO 行缓存？如果图片变成 1000 宽要改什么',
+  '拓展：把图片尺寸改成 200×200，列出所有需要同步修改的参数（sobel_ctrl、vga_pic、RAM 深度、发送端）',
+  '仿真：修改 tb_sobel.v 的 defparam（CLK_FREQ=500000）缩短仿真时间，跑通后看 uart_rx 的 start_nedge 与位采样波形',
+  '串讲整机：从 PC 发一个字节，到 VGA 显示一个像素，数据经过哪些模块、哪些缓冲、哪些时钟域'
+];
+
+// 小测验：{ q, options: [], answer: 下标, explain }
+const QUIZ = [
+  { q: 'sobel 顶层一共例化了几个功能模块（不含 IP）？', options: ['3 个', '4 个', '5 个', '6 个'], answer: 2, explain: 'uart_rx、sobel_ctrl、vga、uart_tx 共 4 个 RTL 模块，加上 clk_gen 共 5 个例化（clk_gen 是 PLL IP）。' },
+  { q: 'vga_clk 的时钟频率是多少？', options: ['50 MHz', '25 MHz', '100 MHz', '12.5 MHz'], answer: 1, explain: 'PLL 输出 c0 = vga_clk 25 MHz，作为 VGA 像素时钟（640×480@60Hz 的标准像素时钟）。' },
+  { q: 'rst_n 复位信号是怎么产生的？', options: ['直接接按键', 'sys_rst_n & locked（PLL 锁定后才释放）', 'PLL 输出自动产生', '由 uart_rx 产生'], answer: 1, explain: 'assign rst_n = sys_rst_n & locked：PLL 未锁定期间系统保持复位，避免在时钟未稳定时跑逻辑。' },
+  { q: '两个 fifo_pic 行缓存在 sobel_ctrl 中的作用是？', options: ['缓存输出结果', '组成 3 行滑动窗口', '跨时钟域同步', '提高串口速度'], answer: 1, explain: 'fifo1 存上一行、fifo2 存上上行，加上当前行组成 3 行数据，供 3×3 Sobel 卷积窗口使用。' },
+  { q: 'Gxy 梯度幅值是怎么计算的？', options: ['Gx×Gy', '|Gx| + |Gy|', '√(Gx²+Gy²)', 'max(Gx,Gy)'], answer: 1, explain: '代码按 gx/gy 符号分四路取绝对值相加，等价于 Gxy = |Gx|+|Gy|，是 √(Gx²+Gy²) 的省资源近似。' },
+  { q: '二值化输出规则是？', options: ['gxy>THRESHOLD 输出白，否则黑', 'gxy≥THRESHOLD 输出黑（边缘），否则白', '固定输出黑白交替', 'gxy 直接输出'], answer: 1, explain: 'po_data <= (gxy >= THRESHOLD) ? BLACK : WHITE——梯度大的地方是边缘，显示为黑色。' },
+  { q: '图片尺寸 LENGTH_P / WIDE_P 是多少？', options: ['640×480', '100×100', '98×98', '200×200'], answer: 1, explain: '串口传输的图片是 100×100（data_test.txt 共 10000 个字节）；VGA 上实际显示区域为 98×98。' },
+  { q: 'VGA 行同步 hsync 一个周期的总拍数（H_TOTAL）是？', options: ['640', '800', '525', '96'], answer: 1, explain: 'H_TOTAL = 800 拍（96 同步 + 40 后沿 + 8 左边框 + 640 有效 + 8 右边框 + 8 前沿）。' },
+  { q: 'uart_rx 用什么方法消除串口线的亚稳态？', options: ['直接采一次', '双级寄存器同步', '提高波特率', '加 FIFO'], answer: 1, explain: 'rx_reg1/rx_reg2 两级寄存器同步后再检测下降沿，这是跨时钟域单比特信号的标准处理。' }
+];
+
+// 术语表：{ term, def }
+const GLOSSARY = [
+  { term: 'Sobel 算子', def: '一种边缘检测卷积核：水平核 [-1 0 1; -2 0 2; -1 0 1] 与垂直核（转置），分别提取横向/纵向梯度 Gx、Gy。' },
+  { term: '边缘检测', def: '通过计算像素灰度梯度，把图像中灰度突变（边缘）的位置找出来；梯度越大越可能是边缘。' },
+  { term: '3×3 卷积窗口', def: '以当前像素为中心的 3 行 3 列邻域（a1..c3 九个寄存器），每个时钟右移一列，是图像卷积的硬件实现基础。' },
+  { term: '行缓存（Line Buffer）', def: '用 FIFO 暂存一行图像数据；两个 FIFO 存前两行，与当前行组成 3 行数据，是逐行扫描图像的必备结构。' },
+  { term: 'FIFO IP', def: 'First-In First-Out 存储器；本工程 fifo_pic 深度=行长度 100，作行缓存用。' },
+  { term: '双时钟 RAM（Dual-Clock RAM）', def: '读写使用不同时钟的 RAM；本工程 ram_pic 写时钟 50M、读时钟 25M，实现跨时钟域图像存储。' },
+  { term: 'PLL（锁相环）', def: 'FPGA 内部的时钟管理单元，可从输入时钟产生多个不同频率/相位的时钟；本工程 50M → 25M + 50M。' },
+  { term: 'VGA 时序', def: '行同步 + 场同步 + 有效数据：一行 800 拍（96 同步/40 后沿/8 左边框/640 有效/8 右边框/8 前沿），一帧 525 行，有效区 640×480。' },
+  { term: 'UART 串口协议', def: '异步串行通信：一帧 = 起始位(0) + 8 数据位 + 停止位(1)，本工程波特率 9600 bps，即每比特约 104 µs。' },
+  { term: '亚稳态与双级同步', def: '异步信号被时钟采样时可能处于不稳定状态；两级寄存器串联可把亚稳态概率降到可忽略，是跨时钟域单比特信号的标准做法。' },
+  { term: '阈值二值化', def: '把灰度图按阈值分成两类：gxy ≥ THRESHOLD 判为边缘（黑），否则为背景（白），输出只有黑/白两色。' },
+  { term: '$readmemh', def: 'Verilog 系统任务：从文本文件按十六进制读入存储器数组，tb_sobel.v 用它加载测试图像 data_test.txt。' }
+];
+
+// 层级框图（可点击下钻）：
+//   root 为起始场景 id；scenes[id] = { title, file?, desc?, w, h, boxes[], wires[] }
+//   box:  { id, label, sub?, x, y, w, h, scene?, kind? }
+//         scene 指向子场景 id（点击下钻）；kind:'ext' 表示外部端子（虚线框）
+//   wire: { from, to, label? }  // 端口位置由渲染器自动计算，label 标注在连线上
+// 叶子模块的端口表放在 PORTS 中：{ boxId: [{name, dir, width, desc}] }
+const DRILL = {
+  root: 'top',
+  scenes: {
+    // ============ 第 1 层：sobel 顶层 ============
+    top: {
+      title: 'sobel 顶层系统框图',
+      file: 'rtl/sobel.v',
+      desc: '时钟/复位为全局分发：clk_gen 输出 c0=vga_clk 25MHz（供 vga）与 c1=clk_50m（供 uart_rx / sobel_ctrl / uart_tx）；rst_n = sys_rst_n & locked。各模块边缘标注了端口名（图中省略全局时钟/复位连线）。点击高亮方块可下钻：sobel_ctrl（Sobel 检测流水线）、vga（显示链路）。',
+      w: 1400, h: 450,
+      boxes: [
+        { id: 'sys_in', kind: 'ext', label: '系统输入', sub: '50MHz 晶振', x: 20, y: 20, w: 120, h: 80 },
+        { id: 'clk_gen', label: 'clk_gen', sub: 'PLL：50M→25M/50M', file: 'quartus_prj/ip_core/clk_gen/clk_gen.v', x: 600, y: 20, w: 170, h: 80 },
+        { id: 'rx_in', kind: 'ext', label: '串口 rx', sub: '外部输入', x: 20, y: 330, w: 120, h: 80, outs: ['rx'] },
+        { id: 'uart_rx', label: 'uart_rx', sub: '串口接收', file: 'rtl/uart_rx.v', x: 400, y: 150, w: 160, h: 140, ins: ['rx'], outs: ['po_data[7:0] / po_flag'] },
+        { id: 'sobel_ctrl', label: 'sobel_ctrl', sub: 'Sobel 边缘检测', file: 'rtl/sobel_ctrl.v', scene: 'sobel_ctrl', x: 620, y: 150, w: 170, h: 140, ins: ['pi_data[7:0] / pi_flag'], outs: ['po_data[7:0] / po_flag', 'po_data[7:0] / po_flag'] },
+        { id: 'vga', label: 'vga', sub: 'VGA 显示顶层', file: 'rtl/vga/vga.v', scene: 'vga', x: 850, y: 150, w: 160, h: 140, ins: ['pi_data[7:0] / po_flag'], outs: ['hsync / vsync / rgb[7:0]'] },
+        { id: 'uart_tx', label: 'uart_tx', sub: '串口发送', file: 'rtl/uart_tx.v', x: 1070, y: 150, w: 160, h: 140, ins: ['pi_data[7:0] / po_flag'], outs: ['tx'] },
+        { id: 'sys_out', kind: 'ext', label: '系统输出', sub: 'FPGA 引脚', x: 1270, y: 150, w: 130, h: 140, ins: ['hsync / vsync / rgb[7:0]', 'tx'] }
+      ],
+      wires: [
+        { from: 'rx_in', to: 'uart_rx' },
+        { from: 'uart_rx', to: 'sobel_ctrl' },
+        { from: 'sobel_ctrl', to: 'vga' },
+        { from: 'sobel_ctrl', to: 'uart_tx' },
+        { from: 'vga', to: 'sys_out' },
+        { from: 'uart_tx', to: 'sys_out' }
+      ]
+    },
+    // ============ 第 2 层：sobel_ctrl 内部 ============
+    sobel_ctrl: {
+      title: 'sobel_ctrl —— Sobel 检测流水线',
+      file: 'rtl/sobel_ctrl.v',
+      desc: 'fifo1 缓存第 0 行、fifo2 缓存第 1 行，与当前行（pi_data 直通）组成 3 行滑动窗口；wr_en / rd_en 由行场计数器（cnt_v / cnt_h / cnt_rd）产生，图中省略。参数：LENGTH_P = 100，THRESHOLD = 8\'b000_011_00，输出 BLACK(0x00) / WHITE(0xFF)。',
+      w: 1480, h: 500,
+      boxes: [
+        { id: 'in_ext', kind: 'ext', label: '来自 uart_rx', sub: 'pi_data / pi_flag', x: 20, y: 150, w: 130, h: 140, outs: ['pi_data[7:0] / pi_flag', 'pi_data[7:0] / pi_flag', 'pi_data（直通）'] },
+        { id: 'fifo1', label: 'fifo_pic #1', sub: '第 0 行缓存', file: 'quartus_prj/ip_core/fifo_pic/fifo_pic.v', x: 210, y: 70, w: 150, h: 110, ins: ['pi_data / pi_flag'], outs: ['data_out1[7:0]'] },
+        { id: 'fifo2', label: 'fifo_pic #2', sub: '第 1 行缓存', file: 'quartus_prj/ip_core/fifo_pic/fifo_pic.v', x: 210, y: 320, w: 150, h: 110, ins: ['pi_data / pi_flag'], outs: ['data_out2[7:0]'] },
+        { id: 'win', label: '行缓冲 + 3×3 窗口', sub: 'a1..c3 移位链', x: 440, y: 150, w: 190, h: 140, ins: ['pi_data（直通）', 'data_out1[7:0]', 'data_out2[7:0]'], outs: ['a1..c3（3×3）'] },
+        { id: 'sobel', label: 'Sobel 计算', sub: 'Gx / Gy', x: 710, y: 165, w: 160, h: 110, ins: ['a1..c3（3×3）'], outs: ['gx / gy'] },
+        { id: 'gxy', label: 'Gxy = |Gx|+|Gy|', sub: '梯度幅值', x: 950, y: 165, w: 140, h: 110, ins: ['gx / gy'], outs: ['gxy[7:0]'] },
+        { id: 'cmp', label: '阈值比较', sub: '≥THRESHOLD → 黑/白', x: 1170, y: 150, w: 150, h: 140, ins: ['gxy[7:0]'], outs: ['po_data[7:0] / po_flag'] },
+        { id: 'out_ext', kind: 'ext', label: '输出', sub: '到 vga / uart_tx', x: 1380, y: 165, w: 90, h: 110, ins: ['po_data[7:0] / po_flag'] }
+      ],
+      wires: [
+        { from: 'in_ext', to: 'fifo1', label: '写第 0 行' },
+        { from: 'in_ext', to: 'fifo2', label: '写第 1 行' },
+        { from: 'in_ext', to: 'win', label: '直通' },
+        { from: 'fifo1', to: 'win', label: 'data_out1' },
+        { from: 'fifo2', to: 'win', label: 'data_out2' },
+        { from: 'win', to: 'sobel', label: 'a1..c3' },
+        { from: 'sobel', to: 'gxy', label: 'gx / gy' },
+        { from: 'gxy', to: 'cmp', label: 'gxy[7:0]' },
+        { from: 'cmp', to: 'out_ext' }
+      ]
+    },
+    // ============ 第 2 层：vga 内部 ============
+    vga: {
+      title: 'vga —— VGA 显示链路',
+      file: 'rtl/vga/vga.v',
+      desc: 'vga_ctrl 产生 640×480@60Hz 时序（行 800 拍 / 场 525 行）与 pix_x / pix_y 坐标；vga_pic 在图片显示区域从 RAM 读出 Sobel 结果，其余区域显示彩条背景。',
+      w: 830, h: 340,
+      boxes: [
+        { id: 'in_ext', kind: 'ext', label: '来自 sobel_ctrl', sub: 'po_data / po_flag', x: 20, y: 135, w: 130, h: 110, outs: ['pi_data[7:0] / pi_flag'] },
+        { id: 'vga_ctrl', label: 'vga_ctrl', sub: '行/场时序生成', file: 'rtl/vga/vga_ctrl.v', x: 210, y: 115, w: 160, h: 150, ins: ['pix_data[7:0]'], outs: ['pix_x / pix_y[9:0]', 'hsync / vsync / rgb[7:0]'] },
+        { id: 'vga_pic', label: 'vga_pic', sub: '图像数据生成', file: 'rtl/vga/vga_pic.v', scene: 'vga_pic', x: 470, y: 115, w: 160, h: 150, ins: ['pi_flag / pi_data[7:0]', 'pix_x / pix_y[9:0]'], outs: ['pix_data_out[7:0]'] },
+        { id: 'out_ext', kind: 'ext', label: 'VGA 输出', sub: '到 FPGA 引脚', x: 680, y: 135, w: 130, h: 110, ins: ['hsync / vsync / rgb[7:0]'] }
+      ],
+      wires: [
+        { from: 'in_ext', to: 'vga_pic', label: '写 RAM' },
+        { from: 'vga_ctrl', to: 'vga_pic', label: 'pix_x / pix_y' },
+        { from: 'vga_pic', to: 'vga_ctrl', label: 'pix_data_out[7:0]' },
+        { from: 'vga_ctrl', to: 'out_ext', label: 'hsync / vsync / rgb[7:0]' }
+      ]
+    },
+    // ============ 第 3 层：vga_pic 内部 ============
+    vga_pic: {
+      title: 'vga_pic —— 图像数据生成',
+      file: 'rtl/vga/vga_pic.v',
+      desc: '双时钟 RAM：写时钟 sys_clk(50MHz)、读时钟 vga_clk(25MHz)；rd_en 在扫描到图片显示区域（640×480 中央 98×98）时拉高，pic_valid 延迟一拍后输出 RAM 数据，其余像素显示彩条背景。',
+      w: 1220, h: 480,
+      boxes: [
+        { id: 'in_ext', kind: 'ext', label: '写入侧', sub: 'pi_flag / pi_data', x: 20, y: 120, w: 130, h: 110, outs: ['pi_flag / pi_data[7:0]'] },
+        { id: 'coord_ext', kind: 'ext', label: '坐标', sub: 'pix_x / pix_y', x: 20, y: 300, w: 130, h: 110, outs: ['pix_x / pix_y[9:0]', 'pix_x[9:0]'] },
+        { id: 'wr', label: '写地址控制', sub: 'wr_addr 计数(14bit)', x: 210, y: 120, w: 160, h: 110, ins: ['pi_flag / pi_data[7:0]'], outs: ['wren / wraddress / data[7:0]'] },
+        { id: 'ram', label: 'ram_pic', sub: '双时钟 RAM IP', file: 'quartus_prj/ip_core/ram_pic/ram_pic.v', x: 450, y: 140, w: 160, h: 140, ins: ['wren / wraddress / data[7:0]', 'rdaddress / rd_en'], outs: ['q[7:0]'] },
+        { id: 'rd', label: '读地址控制', sub: 'rd_addr / rd_en', x: 210, y: 300, w: 160, h: 110, ins: ['pix_x / pix_y[9:0]'], outs: ['rdaddress / rd_en'] },
+        { id: 'bar', label: '背景彩条生成', sub: '10 段彩条', x: 690, y: 120, w: 160, h: 110, ins: ['pix_x[9:0]'], outs: ['pix_data（背景）'] },
+        { id: 'sel', label: '输出选择', sub: 'pic_valid ? RAM : 彩条', x: 930, y: 140, w: 130, h: 140, ins: ['q[7:0]', 'pix_data（背景）'], outs: ['pix_data_out[7:0]'] },
+        { id: 'out_ext', kind: 'ext', label: '输出', sub: '到 vga_ctrl', x: 1130, y: 140, w: 80, h: 140, ins: ['pix_data_out[7:0]'] }
+      ],
+      wires: [
+        { from: 'in_ext', to: 'wr' },
+        { from: 'wr', to: 'ram' },
+        { from: 'coord_ext', to: 'rd' },
+        { from: 'rd', to: 'ram' },
+        { from: 'ram', to: 'sel', label: 'q[7:0]' },
+        { from: 'coord_ext', to: 'bar', label: 'pix_x（背景选色）' },
+        { from: 'bar', to: 'sel' },
+        { from: 'sel', to: 'out_ext' }
+      ]
+    }
+  }
+};
+const PORTS = {
+  clk_gen: [
+    { name: 'inclk0', dir: 'input', width: '1', desc: '50 MHz 晶振时钟' },
+    { name: 'areset', dir: 'input', width: '1', desc: '异步复位（高有效，顶层接 ~sys_rst_n）' },
+    { name: 'c0', dir: 'output', width: '1', desc: 'vga_clk 25 MHz（VGA 像素时钟）' },
+    { name: 'c1', dir: 'output', width: '1', desc: 'clk_50m 系统时钟' },
+    { name: 'locked', dir: 'output', width: '1', desc: 'PLL 锁定指示；rst_n = sys_rst_n & locked' }
+  ],
+  uart_rx: [
+    { name: 'sys_clk', dir: 'input', width: '1', desc: '50 MHz（clk_50m）' },
+    { name: 'sys_rst_n', dir: 'input', width: '1', desc: '复位，低有效' },
+    { name: 'rx', dir: 'input', width: '1', desc: '串口接收线' },
+    { name: 'po_data', dir: 'output', width: '8', desc: '串转并后的数据' },
+    { name: 'po_flag', dir: 'output', width: '1', desc: '数据有效标志' }
+  ],
+  uart_tx: [
+    { name: 'sys_clk', dir: 'input', width: '1', desc: '50 MHz（clk_50m）' },
+    { name: 'sys_rst_n', dir: 'input', width: '1', desc: '复位，低有效' },
+    { name: 'pi_data', dir: 'input', width: '8', desc: '待发送并行数据' },
+    { name: 'pi_flag', dir: 'input', width: '1', desc: '数据有效标志' },
+    { name: 'tx', dir: 'output', width: '1', desc: '串口发送线' }
+  ],
+  vga_ctrl: [
+    { name: 'vga_clk', dir: 'input', width: '1', desc: '25 MHz VGA 像素时钟' },
+    { name: 'sys_rst_n', dir: 'input', width: '1', desc: '复位，低有效' },
+    { name: 'pix_data', dir: 'input', width: '8', desc: '像素色彩信息' },
+    { name: 'pix_x', dir: 'output', width: '10', desc: '显示区 X 坐标' },
+    { name: 'pix_y', dir: 'output', width: '10', desc: '显示区 Y 坐标' },
+    { name: 'hsync', dir: 'output', width: '1', desc: '行同步' },
+    { name: 'vsync', dir: 'output', width: '1', desc: '场同步' },
+    { name: 'rgb', dir: 'output', width: '8', desc: 'RGB 像素输出（3-3-2）' }
+  ],
+  fifo_pic: [
+    { name: 'clock', dir: 'input', width: '1', desc: 'FIFO 时钟（sys_clk 50M）' },
+    { name: 'data', dir: 'input', width: '8', desc: '写数据' },
+    { name: 'wrreq', dir: 'input', width: '1', desc: '写请求' },
+    { name: 'rdreq', dir: 'input', width: '1', desc: '读请求' },
+    { name: 'q', dir: 'output', width: '8', desc: '读数据' }
+  ],
+  ram_pic: [
+    { name: 'inclock', dir: 'input', width: '1', desc: '写时钟 sys_clk 50M' },
+    { name: 'wren', dir: 'input', width: '1', desc: '写使能' },
+    { name: 'wraddress', dir: 'input', width: '14', desc: '写地址' },
+    { name: 'data', dir: 'input', width: '8', desc: '写数据' },
+    { name: 'outclock', dir: 'input', width: '1', desc: '读时钟 vga_clk 25M' },
+    { name: 'rdaddress', dir: 'input', width: '14', desc: '读地址' },
+    { name: 'q', dir: 'output', width: '8', desc: '读数据' }
+  ]
+};
+
+// ================== 以下为页面逻辑，无需修改 ==================
+
+// 下钻框图渲染器
+(function buildDrill() {
+  const crumbEl = document.getElementById('drillCrumb');
+  const sceneEl = document.getElementById('drillScene');
+  const infoEl = document.getElementById('drillInfo');
+  const hintEl = document.getElementById('drillHint');
+  const stack = [];
+  let curSvg = null, curW = 1, scale = 1;
+  function applyScale() {
+    if (curSvg) curSvg.style.width = (curW * scale) + 'px';
+    const v = document.getElementById('drillZoomVal');
+    if (v) v.textContent = Math.round(scale * 100) + '%';
+  }
+  const NS = 'http://www.w3.org/2000/svg';
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  function distribute(n, top, bot) {
+    if (n <= 0) return [];
+    const step = (bot - top) / (n + 1);
+    return Array.from({ length: n }, (_, i) => +(top + step * (i + 1)).toFixed(1));
+  }
+
+  function render(sceneId, push) {
+    if (push) stack.push(sceneId);
+    while (stack.length && !DRILL.scenes[stack[stack.length - 1]]) stack.pop();
+    if (!stack.length) stack.push(DRILL.root);
+    const scene = DRILL.scenes[stack[stack.length - 1]];
+    if (!scene) { sceneEl.innerHTML = '<p class="muted">框图数据未生成。</p>'; return; }
+
+    crumbEl.innerHTML = '';
+    stack.forEach((sid, i) => {
+      const s = DRILL.scenes[sid];
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'drill-crumb' + (i === stack.length - 1 ? ' current' : '');
+      b.textContent = s.title;
+      if (i < stack.length - 1) b.addEventListener('click', () => { stack.length = i + 1; render(stack[stack.length - 1], false); });
+      crumbEl.appendChild(b);
+    });
+
+    infoEl.innerHTML = '';
+    const head = document.createElement('div');
+    head.className = 'drill-head';
+    head.innerHTML = '<span class="drill-title">' + esc(scene.title) + '</span>'
+      + (scene.file ? ' <code class="drill-file">' + esc(scene.file) + '</code>' : '')
+      + (scene.desc ? '<div class="drill-desc">' + esc(scene.desc) + '</div>' : '');
+    infoEl.appendChild(head);
+
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + scene.w + ' ' + scene.h);
+    const boxMap = {};
+    scene.boxes.forEach(bx => { boxMap[bx.id] = bx; });
+    const inMap = {}, outMap = {};
+    scene.wires.forEach((w, wi) => {
+      (inMap[w.to] = inMap[w.to] || []).push(wi);
+      (outMap[w.from] = outMap[w.from] || []).push(wi);
+    });
+    const portY = {};
+    scene.boxes.forEach(bx => {
+      const ins = inMap[bx.id] || [], outs = outMap[bx.id] || [];
+      const topY = bx.y + 44, botY = bx.y + bx.h - 14;
+      const total = botY - topY;
+      const nin = ins.length, nout = outs.length;
+      // 输入/输出端口按数量自适应分配纵向范围，端口名行距更均匀
+      let inTop, inBot, outTop, outBot;
+      if (nin > 0 && nout > 0) {
+        const inShare = total * nin / (nin + nout);
+        inTop = topY; inBot = Math.min(topY + inShare, botY - 6);
+        outTop = Math.min(Math.max(inBot + 4, topY + 6), botY - 6);
+        outBot = botY;
+      } else if (nin > 0) {
+        inTop = topY; inBot = botY; outTop = botY; outBot = botY;
+      } else {
+        inTop = topY; inBot = topY; outTop = topY; outBot = botY;
+      }
+      const inYs = distribute(nin, inTop, inBot);
+      const outYs = distribute(nout, outTop, outBot);
+      ins.forEach((wi, i) => { portY['i' + wi] = inYs[i]; });
+      outs.forEach((wi, i) => { portY['o' + wi] = outYs[i]; });
+    });
+
+    scene.boxes.forEach(bx => {
+      const g = document.createElementNS(NS, 'g');
+      g.setAttribute('class', 'drill-g');
+      const r = document.createElementNS(NS, 'rect');
+      r.setAttribute('x', bx.x); r.setAttribute('y', bx.y);
+      r.setAttribute('width', bx.w); r.setAttribute('height', bx.h); r.setAttribute('rx', 8);
+      r.setAttribute('class', bx.scene ? 'drill-box deep' : (bx.kind === 'ext' ? 'drill-box ext' : 'drill-box'));
+      g.appendChild(r);
+      const t1 = document.createElementNS(NS, 'text');
+      t1.setAttribute('x', bx.x + bx.w / 2); t1.setAttribute('y', bx.y + 22);
+      t1.setAttribute('text-anchor', 'middle'); t1.setAttribute('class', 'drill-box-title');
+      t1.textContent = bx.label;
+      g.appendChild(t1);
+      if (bx.sub) {
+        const t2 = document.createElementNS(NS, 'text');
+        t2.setAttribute('x', bx.x + bx.w / 2); t2.setAttribute('y', bx.y + 38);
+        t2.setAttribute('text-anchor', 'middle'); t2.setAttribute('class', 'drill-box-sub');
+        t2.textContent = bx.sub;
+        g.appendChild(t2);
+      }
+      if (bx.scene) {
+        const t3 = document.createElementNS(NS, 'text');
+        t3.setAttribute('x', bx.x + bx.w / 2); t3.setAttribute('y', bx.y + bx.h - 8);
+        t3.setAttribute('text-anchor', 'middle'); t3.setAttribute('class', 'drill-box-hint');
+        t3.textContent = '点击进入 ↓';
+        g.appendChild(t3);
+      }
+      const inNames = bx.ins || [], outNames = bx.outs || [];
+      (inMap[bx.id] || []).forEach((wi, i) => {
+        const y = portY['i' + wi];
+        const s = document.createElementNS(NS, 'rect');
+        s.setAttribute('x', bx.x - 3); s.setAttribute('y', y - 3);
+        s.setAttribute('width', 6); s.setAttribute('height', 6); s.setAttribute('class', 'dia-port');
+        g.appendChild(s);
+        if (inNames[i]) {
+          const t = document.createElementNS(NS, 'text');
+          t.setAttribute('x', bx.x + 8); t.setAttribute('y', y + 3.5);
+          t.setAttribute('class', 'drill-port-label');
+          t.textContent = inNames[i];
+          g.appendChild(t);
+        }
+      });
+      (outMap[bx.id] || []).forEach((wi, i) => {
+        const y = portY['o' + wi];
+        const s = document.createElementNS(NS, 'rect');
+        s.setAttribute('x', bx.x + bx.w - 3); s.setAttribute('y', y - 3);
+        s.setAttribute('width', 6); s.setAttribute('height', 6); s.setAttribute('class', 'dia-port');
+        g.appendChild(s);
+        if (outNames[i]) {
+          const t = document.createElementNS(NS, 'text');
+          t.setAttribute('x', bx.x + bx.w - 8); t.setAttribute('y', y + 3.5);
+          t.setAttribute('text-anchor', 'end');
+          t.setAttribute('class', 'drill-port-label');
+          t.textContent = outNames[i];
+          g.appendChild(t);
+        }
+      });
+      g.addEventListener('click', ev => {
+        ev.stopPropagation();
+        if (bx.scene) { render(bx.scene, true); }
+        else { showPorts(bx); }
+      });
+      svg.appendChild(g);
+    });
+
+    scene.wires.forEach((w, wi) => {
+      const a = boxMap[w.from], b = boxMap[w.to];
+      if (!a || !b) return;
+      const sx = a.x + a.w, sy = portY['o' + wi], ex = b.x, ey = portY['i' + wi];
+      // 每条线在间隙内错开通道，避免折线竖段重叠
+      const CH = [-0.10, -0.05, 0, 0.05, 0.10];
+      const mid = sx + (ex - sx) * (0.5 + CH[wi % 5]);
+      const d = Math.abs(sy - ey) < 3
+        ? 'M' + sx + ',' + sy + ' H' + ex
+        : 'M' + sx + ',' + sy + ' H' + mid + ' V' + ey + ' H' + ex;
+      const p = document.createElementNS(NS, 'path');
+      p.setAttribute('d', d); p.setAttribute('class', 'wire');
+      svg.appendChild(p);
+      const dir = ex >= sx ? 1 : -1;
+      const tipX = ex + dir * 4;
+      const pol = document.createElementNS(NS, 'polygon');
+      pol.setAttribute('points', (tipX - dir * 9) + ',' + (ey - 5) + ' ' + tipX + ',' + ey + ' ' + (tipX - dir * 9) + ',' + (ey + 5));
+      pol.setAttribute('class', 'dia-arrow');
+      svg.appendChild(pol);
+      if (w.label) {
+        const t = document.createElementNS(NS, 'text');
+        t.setAttribute('x', mid);
+        t.setAttribute('y', (sy + ey) / 2 - 7);
+        t.setAttribute('text-anchor', 'middle');
+        t.setAttribute('class', 'drill-wire-label');
+        t.textContent = w.label;
+        svg.appendChild(t);
+      }
+    });
+
+    sceneEl.innerHTML = '';
+    sceneEl.appendChild(svg);
+    curSvg = svg; curW = scene.w;
+    const fit = Math.max((sceneEl.clientWidth || 800) / scene.w, 0.5);
+    scale = Math.max(fit, 1.15);
+    applyScale();
+    hintEl.textContent = '提示：点击带「点击进入 ↓」的方块下钻一层；点击其他方块查看端口/说明；面包屑或 Esc 返回上层；工具栏可放大/缩小/适应窗口。';
+  }
+
+  function showPorts(bx) {
+    const list = PORTS[bx.id];
+    const panel = document.getElementById('drillPorts');
+    panel.innerHTML = '';
+    const h = document.createElement('div');
+    h.className = 'drill-port-title';
+    h.innerHTML = '<b>' + esc(bx.label) + '</b>'
+      + (bx.file ? ' <code>' + esc(bx.file) + '</code>' : '');
+    panel.appendChild(h);
+    if (!list || !list.length) {
+      const p = document.createElement('div');
+      p.className = 'drill-port-none';
+      p.textContent = bx.kind === 'ext' ? '外部端子，方向见连线箭头。' : '该模块为内部逻辑或 IP 核，无独立端口表；详细信号见下方表格。';
+      panel.appendChild(p);
+    } else {
+      const tbl = document.createElement('table');
+      tbl.innerHTML = '<tr><th>信号</th><th>方向</th><th>位宽</th><th>说明</th></tr>';
+      list.forEach(pt => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td><code>' + esc(pt.name) + '</code></td><td>' + esc(pt.dir) + '</td><td>' + esc(pt.width) + '</td><td>' + esc(pt.desc) + '</td>';
+        tbl.appendChild(tr);
+      });
+      panel.appendChild(tbl);
+    }
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  document.addEventListener('keydown', ev => {
+    if ((ev.key === 'Escape' || ev.key === 'Backspace') && stack.length > 1) {
+      stack.pop(); render(stack[stack.length - 1], false);
+    }
+  });
+
+  const zIn = document.getElementById('drillZoomIn');
+  const zOut = document.getElementById('drillZoomOut');
+  const zFit = document.getElementById('drillZoomFit');
+  if (zIn) zIn.addEventListener('click', () => { scale = Math.min(scale * 1.25, 4); applyScale(); });
+  if (zOut) zOut.addEventListener('click', () => { scale = Math.max(scale / 1.25, 0.4); applyScale(); });
+  if (zFit) zFit.addEventListener('click', () => {
+    const fit = Math.max((sceneEl.clientWidth || 800) / (curW || 1), 0.5);
+    scale = Math.max(fit, 1.15); applyScale();
+  });
+
+  render(DRILL.root, false);
+})();
+
+// 目录生成
+(function buildToc() {
+  const wrap = document.getElementById('tocLinks');
+  document.querySelectorAll('section[data-title]').forEach(sec => {
+    const a = document.createElement('a');
+    a.href = '#' + sec.id;
+    a.textContent = sec.dataset.title;
+    a.dataset.target = sec.id;
+    wrap.appendChild(a);
+  });
+  const links = wrap.querySelectorAll('a');
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.toggle('active', l.dataset.target === e.target.id));
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  document.querySelectorAll('section[data-title]').forEach(s => io.observe(s));
+})();
+
+// 任务清单（localStorage）
+(function buildTasks() {
+  const list = document.getElementById('taskList');
+  const bar = document.getElementById('taskBar');
+  const count = document.getElementById('taskCount');
+  const KEY = 'fpga.tasks';
+  let done = {};
+  try { done = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { done = {}; }
+  const render = () => {
+    list.innerHTML = '';
+    const n = TASKS.length, d = Object.values(done).filter(Boolean).length;
+    bar.style.width = n ? (d / n * 100) + '%' : '0%';
+    count.textContent = `已完成 ${d} / ${n} 项`;
+    TASKS.forEach((t, i) => {
+      const li = document.createElement('li');
+      li.className = done[i] ? 'done' : '';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = !!done[i];
+      cb.addEventListener('change', () => {
+        done[i] = cb.checked;
+        localStorage.setItem(KEY, JSON.stringify(done));
+        render();
+      });
+      const span = document.createElement('span');
+      span.className = 'task-text';
+      span.textContent = t;
+      li.appendChild(cb); li.appendChild(span);
+      list.appendChild(li);
+    });
+  };
+  render();
+  document.getElementById('taskReset').addEventListener('click', () => {
+    if (confirm('确定清空任务进度？')) { done = {}; localStorage.removeItem(KEY); render(); }
+  });
+})();
+
+// 小测验
+(function buildQuiz() {
+  const wrap = document.getElementById('quizList');
+  const scoreEl = document.getElementById('quizScore');
+  const KEY = 'fpga.quiz';
+  let state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { state = {}; }
+  const render = () => {
+    wrap.innerHTML = '';
+    let correct = 0, answered = 0;
+    QUIZ.forEach((q, qi) => {
+      const div = document.createElement('div');
+      div.className = 'quiz-item';
+      const qEl = document.createElement('div');
+      qEl.className = 'q';
+      qEl.textContent = `${qi + 1}. ${q.q}`;
+      div.appendChild(qEl);
+      q.options.forEach((opt, oi) => {
+        const label = document.createElement('label');
+        const input = document.createElement('input');
+        input.type = 'radio';
+        input.name = 'q' + qi;
+        input.value = oi;
+        input.checked = state[qi] === oi;
+        input.addEventListener('change', () => {
+          state[qi] = oi;
+          localStorage.setItem(KEY, JSON.stringify(state));
+          render();
+        });
+        label.appendChild(input);
+        label.appendChild(document.createTextNode(' ' + opt));
+        div.appendChild(label);
+      });
+      const fb = document.createElement('div');
+      fb.className = 'feedback';
+      if (state[qi] !== undefined) {
+        const right = state[qi] === q.answer;
+        answered++;
+        if (right) correct++;
+        div.className = 'quiz-item ' + (right ? 'correct' : 'wrong');
+        fb.textContent = right ? '✅ 回答正确' : '❌ 回答错误';
+        const exp = document.createElement('div');
+        exp.className = 'explain';
+        exp.textContent = '解析：' + q.explain;
+        fb.appendChild(exp);
+      }
+      div.appendChild(fb);
+      wrap.appendChild(div);
+    });
+    scoreEl.textContent = answered ? `已答 ${answered} / ${QUIZ.length}，正确 ${correct} 题` : '答题后显示得分';
+  };
+  render();
+  document.getElementById('quizReset').addEventListener('click', () => {
+    state = {}; localStorage.removeItem(KEY); render();
+  });
+})();
+
+// 术语表
+(function buildGlossary() {
+  const dl = document.getElementById('glossaryList');
+  GLOSSARY.forEach(g => {
+    const dt = document.createElement('dt');
+    dt.textContent = g.term;
+    const dd = document.createElement('dd');
+    dd.textContent = g.def;
+    dl.appendChild(dt); dl.appendChild(dd);
+  });
+})();
+
+// 笔记（自动保存）
+(function buildNotes() {
+  const ta = document.getElementById('noteArea');
+  const status = document.getElementById('noteStatus');
+  const KEY = 'fpga.notes';
+  ta.value = localStorage.getItem(KEY) || '';
+  let timer = null;
+  ta.addEventListener('input', () => {
+    status.textContent = '保存中…';
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      localStorage.setItem(KEY, ta.value);
+      status.textContent = '已保存 ' + new Date().toLocaleTimeString();
+    }, 500);
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ti_adc_sim · FPGA 学习页</title>
+<style>
+  :root {
+    --bg: #0e141b; --panel: #161f2a; --panel2: #1b2634;
+    --line: #26334a; --fg: #dce6f2; --muted: #8fa3bd;
+    --accent: #4cc2ff; --accent2: #7ee0a3; --warn: #e3b341; --danger: #f47067;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg); color: var(--fg);
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    line-height: 1.65; font-size: 15px;
+  }
+  /* 布局 */
+  #app { display: flex; min-height: 100vh; }
+  nav#toc {
+    width: 260px; flex-shrink: 0; position: sticky; top: 0; height: 100vh;
+    overflow-y: auto; background: var(--panel); border-right: 1px solid var(--line);
+    padding: 20px 14px;
+  }
+  nav#toc h2 { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin: 14px 8px 8px; }
+  nav#toc a {
+    display: block; color: var(--muted); text-decoration: none; font-size: 14px;
+    padding: 6px 8px; border-radius: 6px; margin-bottom: 2px;
+  }
+  nav#toc a:hover, nav#toc a.active { color: var(--accent); background: var(--panel2); }
+  main { flex: 1; min-width: 0; padding: 28px 36px 80px; max-width: 960px; }
+  header { border-bottom: 1px solid var(--line); padding-bottom: 16px; margin-bottom: 26px; }
+  header h1 { font-size: 26px; color: var(--accent); }
+  header .meta { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  section { margin-bottom: 44px; scroll-margin-top: 16px; }
+  section > h2 {
+    font-size: 20px; color: var(--accent2); margin-bottom: 14px; padding-bottom: 6px;
+    border-bottom: 1px solid var(--line);
+  }
+  h3 { color: var(--fg); margin: 18px 0 8px; font-size: 16px; }
+  p { margin: 8px 0; color: var(--fg); }
+  .muted { color: var(--muted); }
+  /* 卡片与表格 */
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 12px 0; }
+  .card h4 { color: var(--accent); font-size: 15px; margin-bottom: 6px; font-family: Consolas, monospace; }
+  .card .role { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13.5px; }
+  th, td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--panel2); color: var(--accent); font-weight: 600; white-space: nowrap; }
+  tr:nth-child(even) td { background: rgba(255,255,255,.02); }
+  pre {
+    background: #0b1118; border: 1px solid var(--line); border-radius: 8px;
+    padding: 14px; overflow-x: auto; font-size: 13px; line-height: 1.55;
+    font-family: Consolas, "Courier New", monospace; color: #c9d7e8; margin: 10px 0;
+  }
+  code { font-family: Consolas, "Courier New", monospace; font-size: .92em; }
+  p code, li code, td code { background: var(--panel2); padding: 1px 5px; border-radius: 4px; color: var(--accent); }
+  .note { border-left: 3px solid var(--warn); background: rgba(227,179,65,.08); padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 14px; }
+  /* 层级图 */
+  .tree { font-family: Consolas, monospace; font-size: 13.5px; line-height: 1.7; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px; overflow-x: auto; white-space: pre; color: #c9d7e8; }
+  /* 模块层级示意图 */
+  .dia-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin: 12px 0; overflow-x: auto; }
+  .dia-wrap svg { display: block; width: 100%; height: auto; max-width: 920px; }
+  .wire { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 7 7; animation: wireflow 1.2s linear infinite; }
+  @keyframes wireflow { to { stroke-dashoffset: -28; } }
+  .dia-box { fill: var(--panel2); stroke: var(--line); }
+  .dia-box-dut { fill: #1b2634; stroke: var(--accent); }
+  .dia-box-dash { fill: #1b2634; stroke: var(--muted); stroke-dasharray: 5 4; }
+  .dia-title { fill: var(--accent); font-size: 14px; font-weight: 600; }
+  .dia-sub { fill: var(--muted); font-size: 10.5px; }
+  .dia-txt { fill: var(--fg); font-size: 11px; }
+  .dia-txt-mono { fill: #c9d7e8; font-size: 10.5px; font-family: Consolas, monospace; }
+  .dia-lbl { fill: var(--muted); font-size: 11px; }
+  .dia-port { fill: var(--accent2); }
+  .dia-arrow { fill: var(--accent); }
+  /* 任务清单 */
+  #taskList { list-style: none; }
+  #taskList li {
+    display: flex; gap: 10px; align-items: flex-start; background: var(--panel);
+    border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; margin: 8px 0;
+  }
+  #taskList input { margin-top: 4px; accent-color: var(--accent2); width: 16px; height: 16px; flex-shrink: 0; cursor: pointer; }
+  #taskList li.done .task-text { text-decoration: line-through; color: var(--muted); }
+  .progress { height: 6px; background: var(--panel2); border-radius: 3px; overflow: hidden; margin: 10px 0 4px; }
+  .progress > div { height: 100%; width: 0; background: var(--accent2); transition: width .25s; }
+  #taskCount { font-size: 13px; color: var(--muted); }
+  /* 测验 */
+  .quiz-item { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 14px 0; }
+  .quiz-item .q { font-weight: 600; margin-bottom: 8px; }
+  .quiz-item label { display: block; padding: 5px 8px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+  .quiz-item label:hover { background: var(--panel2); }
+  .quiz-item .feedback { display: none; margin-top: 8px; font-size: 13.5px; border-radius: 6px; padding: 8px 12px; }
+  .quiz-item.correct .feedback { display: block; background: rgba(126,224,163,.1); color: var(--accent2); border: 1px solid rgba(126,224,163,.3); }
+  .quiz-item.wrong .feedback { display: block; background: rgba(244,112,103,.1); color: var(--danger); border: 1px solid rgba(244,112,103,.3); }
+  .quiz-item .explain { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  #quizScore { font-size: 13px; color: var(--muted); }
+  /* 术语表 */
+  #glossary dt { color: var(--accent); font-weight: 600; margin-top: 12px; font-family: Consolas, monospace; }
+  #glossary dd { color: var(--fg); margin: 4px 0 0 0; font-size: 14px; }
+  /* 笔记 */
+  #noteArea {
+    width: 100%; min-height: 140px; background: var(--panel); color: var(--fg);
+    border: 1px solid var(--line); border-radius: 8px; padding: 12px; font-size: 14px;
+    font-family: inherit; resize: vertical;
+  }
+  #noteArea:focus { outline: 1px solid var(--accent); }
+  #noteStatus { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .btn {
+    background: var(--panel2); color: var(--fg); border: 1px solid var(--line);
+    border-radius: 6px; padding: 6px 14px; font-size: 13px; cursor: pointer; margin: 4px 4px 4px 0;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); padding-top: 14px; margin-top: 40px; }
+  @media (max-width: 860px) {
+    #app { flex-direction: column; }
+    nav#toc { position: static; width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--line); }
+    main { padding: 20px 16px 60px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- 目录（由 JS 自动生成） -->
+  <nav id="toc">
+    <h2>目录</h2>
+    <div id="tocLinks"></div>
+  </nav>
+
+  <main>
+    <header>
+      <h1>ti_adc_sim —— 四通道时间交织 ADC 采样模型</h1>
+      <div class="meta">FPGA 学习页面 · 生成日期：2026-08-17 · 由 fpga-tutor 技能生成</div>
+    </header>
+
+    <!-- ① 工程概览 -->
+    <section id="overview" data-title="工程概览">
+      <h2>① 工程概览</h2>
+      <p><b>一句话功能</b>：一个 4 通道时间交织 ADC（TI-ADC）的 <b>行为级采样模型</b>——用 SystemVerilog 忠实复刻 MATLAB 参考脚本 TI_ADC_v9.m（error_mode=4）的采样与误差注入逻辑，并由自验证测试平台确认与双精度参考实现完全一致。</p>
+      <p><b>工程类型</b>：纯仿真验证工程（Vivado/xsim），<b>无开发板、无约束文件</b>；被测模型为不可综合的行为模型（real 运算 + $sin），学习重点是「模型如何工作」与「误差如何被测量」。配套 Python 工具（gen_reference.py / compare.py）构成双实现交叉验证闭环。</p>
+      <p><b>关键指标</b>：总采样率 4 GSps（4 通道 × 1 GSps 时间交织）；14 位量化、±1 V 满量程、LSB ≈ 122.07 µV；相干采样单音输入 fin ≈ 189.27 MHz（M=3101 / N=65536）；每记录 65536 个样本。</p>
+      <p><b>验证状态</b>：✅ 仿真自验证通过——Verilog 输出与 Python 双精度参考 <b>65536/65536 点 100% 一致</b>（max diff = 0 LSB）；注入的失调 / 增益 / 时序偏移均被测试平台准确反估（结果表见「关键代码解读」末尾）。</p>
+      <div class="note">💡 学习建议：先读概览，再按模块层级逐层深入；每读完一个模块，回到学习任务清单勾选完成。</div>
+    </section>
+
+    <!-- ② 目录结构 -->
+    <section id="structure" data-title="目录结构">
+      <h2>② 工程目录结构</h2>
+      <div class="tree">ti_adc_sim/
+├── src/
+│   └── ti_adc_model.sv      # DUT：4 通道 TI-ADC 行为模型（唯一的 RTL 文件）
+├── sim/
+│   ├── tb_ti_adc.sv         # 主测试平台：驱动时钟/复位、采集输出、自验证、写文件
+│   └── tb_sin_check.sv      # 能力探测：xsim 是否支持 $sin/$atan2/$floor/$ceil
+├── tools/
+│   ├── gen_reference.py     # Python 双精度参考模型（同一算法的独立实现）
+│   └── compare.py           # 逐点对比 Verilog 输出 vs 参考，输出 PASS/CHECK
+├── sim_out/
+│   ├── adc_out_codes.txt    # Verilog 仿真输出（65536 行：idx ch code）
+│   └── adc_ref_codes.txt    # Python 参考输出（65536 行：idx ch code）
+└── ti_adc_sim/              # Vivado 工程目录（xpr + 缓存/仿真产物，非学习重点）
+    ├── ti_adc_sim.xpr
+    ├── mcp_sim/             # xsim 编译/运行产物；sim.log 里有自验证打印
+    ├── ti_adc_sim.sim/      # 仿真运行目录
+    └── ti_adc_sim.cache/ .hw/ .ip_user_files/</div>
+      <p class="muted">说明：IP 核、仿真与编译产物目录仅列出名称，学习重点在 RTL 与约束文件。</p>
+    </section>
+
+    <!-- ③ 模块层级 -->
+    <section id="hierarchy" data-title="模块层级">
+      <h2>③ 模块层级</h2>
+      <p>系统模块框图（教程风格：模块独立成块、信号箭头连线；虚线为流动动画）：</p>
+      <div class="dia-wrap">
+      <svg viewBox="0 0 1020 440" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ti_adc_sim 系统模块框图">
+        <text x="30" y="38" class="dia-sub">注：tb_ti_adc 同时承担激励生成与结果采集，图中按两侧画出（实为同一模块 sim/tb_ti_adc.sv）。</text>
+
+        <!-- A：激励侧（tb_ti_adc） -->
+        <rect x="15" y="120" width="210" height="180" rx="10" class="dia-box"/>
+        <text x="35" y="150" class="dia-title">tb_ti_adc</text>
+        <text x="35" y="168" class="dia-sub">sim/tb_ti_adc.sv</text>
+        <text x="35" y="188" class="dia-sub">激励侧：时钟 / 复位生成</text>
+        <rect x="222" y="157" width="6" height="6" class="dia-port"/>
+        <rect x="222" y="227" width="6" height="6" class="dia-port"/>
+
+        <!-- B：DUT -->
+        <rect x="430" y="70" width="280" height="310" rx="10" class="dia-box-dut"/>
+        <text x="455" y="100" class="dia-title">ti_adc_model（DUT）</text>
+        <text x="455" y="118" class="dia-sub">src/ti_adc_model.sv · 行为模型（不可综合）</text>
+        <rect x="427" y="157" width="6" height="6" class="dia-port"/>
+        <rect x="427" y="227" width="6" height="6" class="dia-port"/>
+        <rect x="707" y="147" width="6" height="6" class="dia-port"/>
+        <rect x="707" y="197" width="6" height="6" class="dia-port"/>
+        <rect x="707" y="247" width="6" height="6" class="dia-port"/>
+        <rect x="707" y="297" width="6" height="6" class="dia-port"/>
+
+        <!-- DUT 内部数据流水线 -->
+        <text x="570" y="322" class="dia-sub" text-anchor="middle">DUT 内部数据流水线</text>
+        <rect x="445" y="330" width="80" height="50" rx="6" class="dia-box"/>
+        <text x="485" y="346" class="dia-txt" text-anchor="middle">采样时刻</text>
+        <text x="485" y="362" class="dia-txt-mono" text-anchor="middle">n/FS+τ(ch)</text>
+        <text x="485" y="378" class="dia-sub" text-anchor="middle">→ x_in</text>
+        <line x1="525" y1="355" x2="536" y2="355" stroke="#4cc2ff" stroke-width="2"/>
+        <polygon points="531,349 543,355 531,361" class="dia-arrow"/>
+        <rect x="539" y="330" width="80" height="50" rx="6" class="dia-box"/>
+        <text x="579" y="346" class="dia-txt" text-anchor="middle">失调 + 增益</text>
+        <text x="579" y="362" class="dia-txt-mono" text-anchor="middle">(x+off)×gan</text>
+        <text x="579" y="378" class="dia-sub" text-anchor="middle">→ x_val</text>
+        <line x1="619" y1="355" x2="630" y2="355" stroke="#4cc2ff" stroke-width="2"/>
+        <polygon points="625,349 637,355 625,361" class="dia-arrow"/>
+        <rect x="633" y="330" width="72" height="50" rx="6" class="dia-box"/>
+        <text x="669" y="346" class="dia-txt" text-anchor="middle">量化 + 饱和</text>
+        <text x="669" y="362" class="dia-txt-mono" text-anchor="middle">±8192</text>
+        <text x="669" y="378" class="dia-sub" text-anchor="middle">→ adc_code</text>
+
+        <!-- C：接收侧（tb_ti_adc） -->
+        <rect x="830" y="120" width="175" height="180" rx="10" class="dia-box"/>
+        <text x="850" y="150" class="dia-title">tb_ti_adc</text>
+        <text x="850" y="168" class="dia-sub">sim/tb_ti_adc.sv</text>
+        <text x="850" y="188" class="dia-sub">接收侧：采集 + 自验证</text>
+        <rect x="827" y="147" width="6" height="6" class="dia-port"/>
+        <rect x="827" y="197" width="6" height="6" class="dia-port"/>
+        <rect x="827" y="247" width="6" height="6" class="dia-port"/>
+        <rect x="827" y="297" width="6" height="6" class="dia-port"/>
+
+        <!-- 输出文件 -->
+        <rect x="805" y="340" width="210" height="50" rx="8" class="dia-box-dash"/>
+        <text x="910" y="363" class="dia-txt-mono" text-anchor="middle">sim_out/adc_out_codes.txt</text>
+        <text x="910" y="379" class="dia-sub" text-anchor="middle">逐样本写入（idx ch code）</text>
+
+        <!-- 独立探针 -->
+        <rect x="15" y="350" width="210" height="55" rx="8" class="dia-box-dash"/>
+        <text x="35" y="374" class="dia-txt" font-weight="600">tb_sin_check</text>
+        <text x="35" y="390" class="dia-sub">能力探针 · 不例化 DUT</text>
+
+        <!-- 信号连线：输入 -->
+        <path d="M225,160 H427" class="wire"/>
+        <polygon points="420,154 430,160 420,166" class="dia-arrow"/>
+        <text x="327" y="152" class="dia-lbl" text-anchor="middle">clk · 4 GHz</text>
+        <path d="M225,230 H427" class="wire"/>
+        <polygon points="420,224 430,230 420,236" class="dia-arrow"/>
+        <text x="327" y="222" class="dia-lbl" text-anchor="middle">rst_n（同步复位）</text>
+
+        <!-- 信号连线：输出 -->
+        <path d="M710,150 H827" class="wire"/>
+        <polygon points="821,144 830,150 821,156" class="dia-arrow"/>
+        <text x="768" y="142" class="dia-lbl" text-anchor="middle">adc_code[14:0]</text>
+        <path d="M710,200 H827" class="wire"/>
+        <polygon points="821,194 830,200 821,206" class="dia-arrow"/>
+        <text x="768" y="192" class="dia-lbl" text-anchor="middle">ch_id[1:0]</text>
+        <path d="M710,250 H827" class="wire"/>
+        <polygon points="821,244 830,250 821,256" class="dia-arrow"/>
+        <text x="768" y="242" class="dia-lbl" text-anchor="middle">valid</text>
+        <path d="M710,300 H827" class="wire"/>
+        <polygon points="821,294 830,300 821,306" class="dia-arrow"/>
+        <text x="768" y="292" class="dia-lbl" text-anchor="middle">idx[15:0]</text>
+
+        <!-- 写入文件 -->
+        <path d="M910,300 V337" class="wire"/>
+        <polygon points="904,327 916,327 910,339" class="dia-arrow"/>
+        <text x="922" y="322" class="dia-lbl">写入</text>
+
+        <!-- 图例 -->
+        <text x="30" y="432" class="dia-sub">图例：</text>
+        <line x1="67" y1="428" x2="107" y2="428" stroke="#4cc2ff" stroke-width="2" stroke-dasharray="7 7"/>
+        <text x="115" y="432" class="dia-sub">信号线（流动动画）</text>
+        <rect x="227" y="429" width="8" height="8" class="dia-port"/>
+        <text x="240" y="432" class="dia-sub">端口</text>
+        <rect x="283" y="429" width="8" height="8" rx="2" class="dia-box-dash"/>
+        <text x="296" y="432" class="dia-sub">独立模块 / 文件</text>
+      </svg>
+      </div>
+      <p class="muted">各模块职责速览：</p>
+      <div class="card">
+        <h4>ti_adc_model（DUT · 被测模块）</h4>
+        <div class="role">src/ti_adc_model.sv · 行为级采样模型 · 不可综合（仿真专用）</div>
+        <p><b>职责</b>：按 MATLAB 参考脚本 TI_ADC_v9.m（error_mode=4）忠实建模 4 通道时间交织 ADC：单音输入 → 逐通道注入时序偏移 / 失调 / 增益误差 → 14 位量化 → 逐样本输出。</p>
+        <p><b>关键端口</b>：<code>clk</code>（4 GHz 采样时钟）、<code>rst_n</code>（同步复位）、<code>adc_code[14:0]</code>（量化码，±8192 ↔ ±1 V）、<code>ch_id[1:0]</code>（通道号）、<code>valid</code>（每样本一拍高电平）、<code>idx[15:0]</code>（样本序号）。</p>
+        <p><b>一句话解读</b>：<code>n[1:0]</code> 决定通道归属（时间交织），<code>n/FS + τ(ch)</code> 决定采样时刻（偏移注入），<code>(x + off)×gan</code> 决定幅值误差，最后远离零四舍五入 + 饱和出码。</p>
+      </div>
+      <div class="card">
+        <h4>tb_ti_adc（主测试平台）</h4>
+        <div class="role">sim/tb_ti_adc.sv · 自验证 testbench</div>
+        <p><b>职责</b>：产生 4 GHz 时钟与复位；收集 65536 个样本写入 <code>sim_out/adc_out_codes.txt</code>；逐通道用三种估计器反推注入的误差并与真值比对。</p>
+        <p><b>一句话解读</b>：样本均值估失调、MAD 比值估增益、I/Q 正交解调 + atan2 估时序偏移——典型的「注入 → 提取」自校验闭环，每个估计量都对应一类 TI-ADC 失配。</p>
+      </div>
+      <div class="card">
+        <h4>tb_sin_check（能力探测）</h4>
+        <div class="role">sim/tb_sin_check.sv · 一次性探针</div>
+        <p><b>职责</b>：确认 Vivado xsim 支持 <code>$sin</code> / <code>$atan2</code> / <code>$floor</code> / <code>$ceil</code> 等数学系统函数——行为模型的运行地基。</p>
+        <p><b>一句话解读</b>：跑通即证明仿真器具备模型所需的 real 运算能力，为后续建模扫清障碍。</p>
+      </div>
+    </section>
+
+    <!-- ④ 端口与信号 -->
+    <section id="signals" data-title="端口与信号">
+      <h2>④ 端口与信号</h2>
+      <p>顶层模块端口：</p>
+      <div class="dia-wrap">
+      <svg viewBox="0 0 660 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ti_adc_model 端口框图">
+        <rect x="240" y="15" width="180" height="210" rx="10" class="dia-box-dut"/>
+        <text x="330" y="52" class="dia-title" text-anchor="middle">ti_adc_model</text>
+        <text x="330" y="70" class="dia-sub" text-anchor="middle">14-bit · 4 GSps · 行为模型</text>
+        <!-- 输入端口 -->
+        <path d="M150,85 H236" class="wire"/>
+        <polygon points="228,79 240,85 228,91" class="dia-arrow"/>
+        <text x="142" y="89" class="dia-lbl" text-anchor="end">clk</text>
+        <path d="M150,145 H236" class="wire"/>
+        <polygon points="228,139 240,145 228,151" class="dia-arrow"/>
+        <text x="142" y="149" class="dia-lbl" text-anchor="end">rst_n</text>
+        <!-- 输出端口 -->
+        <path d="M424,85 H520" class="wire"/>
+        <polygon points="512,79 524,85 512,91" class="dia-arrow"/>
+        <text x="530" y="89" class="dia-lbl">adc_code[14:0]</text>
+        <path d="M424,125 H520" class="wire"/>
+        <polygon points="512,119 524,125 512,131" class="dia-arrow"/>
+        <text x="530" y="129" class="dia-lbl">ch_id[1:0]</text>
+        <path d="M424,165 H520" class="wire"/>
+        <polygon points="512,159 524,165 512,171" class="dia-arrow"/>
+        <text x="530" y="169" class="dia-lbl">valid</text>
+        <path d="M424,205 H520" class="wire"/>
+        <polygon points="512,199 524,205 512,211" class="dia-arrow"/>
+        <text x="530" y="209" class="dia-lbl">idx[15:0]</text>
+      </svg>
+      </div>
+      <p class="muted">方向约定：箭头流入 = 输入，流出 = 输出。下表给出各位宽与作用。</p>
+      <table>
+        <tr><th>信号</th><th>方向</th><th>位宽</th><th>作用</th></tr>
+        <tr><td><code>clk</code></td><td>input</td><td>1</td><td>4 GHz 采样时钟（周期 250 ps）</td></tr>
+        <tr><td><code>rst_n</code></td><td>input</td><td>1</td><td>同步复位，低有效；复位后样本序号清零</td></tr>
+        <tr><td><code>adc_code</code></td><td>output</td><td>signed 15</td><td>量化输出码，±8192 ↔ ±1 V（满量程饱和）</td></tr>
+        <tr><td><code>ch_id</code></td><td>output</td><td>2</td><td>当前样本所属通道 0..3（= n[1:0]）</td></tr>
+        <tr><td><code>valid</code></td><td>output</td><td>1</td><td>每输出一个样本高电平一拍（N_SAMPLES 后拉低）</td></tr>
+        <tr><td><code>idx</code></td><td>output</td><td>16</td><td>样本序号 0..N_SAMPLES-1</td></tr>
+      </table>
+      <h3>关键内部信号 / 参数</h3>
+      <table>
+        <tr><th>名称</th><th>含义</th><th>取值</th></tr>
+        <tr><td><code>FS</code></td><td>总采样率</td><td>4.0 GHz（4 × 1 GSps 交织）</td></tr>
+        <tr><td><code>N_BITS / V_REF</code></td><td>量化位数 / 满量程</td><td>14 bit / ±1 V</td></tr>
+        <tr><td><code>A_IN</code></td><td>输入单音幅度</td><td>0.99 V（接近满量程）</td></tr>
+        <tr><td><code>M / N_SAMPLES</code></td><td>相干采样参数</td><td>3101（质数）/ 65536</td></tr>
+        <tr><td><code>FIN</code></td><td>输入频率 FS·M/N</td><td>≈ 189.2700 MHz</td></tr>
+        <tr><td><code>DELTA</code></td><td>LSB = 2·V_REF/2^N</td><td>≈ 122.07 µV</td></tr>
+        <tr><td><code>OFF1..3</code></td><td>通道 1..3 失调注入</td><td>+5 mV / −3 mV / +2 mV</td></tr>
+        <tr><td><code>GAN1..3</code></td><td>通道 1..3 增益注入</td><td>1.005 / 0.997 / 1.002</td></tr>
+        <tr><td><code>PHS1..3</code></td><td>通道 1..3 时序偏移注入</td><td>+2 ps / −1.5 ps / +1.2 ps</td></tr>
+        <tr><td><code>t_sample</code></td><td>实际采样时刻</td><td>n/FS + τ(ch)（τ 为皮秒级偏移）</td></tr>
+      </table>
+    </section>
+
+    <!-- ⑤ 关键代码解读 -->
+    <section id="code" data-title="关键代码解读">
+      <h2>⑤ 关键代码解读</h2>
+      <h3>1. 时间交织：n[1:0] 决定通道归属</h3>
+      <pre>ch_id &lt;= n[1:0];          // channel of this sample：序号低 2 位 = 通道号</pre>
+      <p>交错的核心只有这一行：样本 <code>n=0,4,8,…</code> 归通道 0，<code>n=1,5,9,…</code> 归通道 1，依此类推。每个通道实际只以 1 GSps 采样，但四个通道轮流工作，整体输出就是 4 GSps——这正是时间交织（Time-Interleaved）的采样率倍增原理。</p>
+      <h3>2. 相干采样：fin = FS·M/N，M 为什么是质数</h3>
+      <pre>localparam real FIN = FS * real'(M) / real'(N_SAMPLES); // 189.27 MHz</pre>
+      <p>选择 <code>fin = FS·M/N</code> 且 M 与 N 互质，记录长度内恰好包含 M=3101 个整周期——FFT 分析时频谱不会泄漏。M 取质数（3101）还有一个隐藏好处：样本在 4 个通道间的分布完全均匀，任何通道都不会对输入信号欠采样。这是 ADC 测试中「相干采样」的标准做法。</p>
+      <h3>3. 时序偏移注入：改的是「采样时刻」而不是「相位」</h3>
+      <pre>t_sample = real'(n)/FS + get_tau(n[1:0]);   // 理想时刻 + 通道偏移 τ
+x_in     = A_IN * $sin(2.0*PI*FIN*t_sample);</pre>
+      <p>时序偏移（skew）的本质是采样时钟沿的偏差：通道 1 晚采样 2 ps、通道 2 早 1.5 ps。注意 <code>$sin</code> 的参数是<b>时间</b>，所以 τ 直接平移采样点，等效改变信号相位 2π·fin·τ——这是对「真实采样时刻偏移」的正确建模，而不是简单给输出加一个相位常数。</p>
+      <h3>4. 失调 + 增益注入：顺序与 MATLAB 严格一致</h3>
+      <pre>x_val = (x_in + get_off(n[1:0])) * get_gan(n[1:0]);</pre>
+      <p>先加失调、再乘增益。这个顺序不是随便定的：它与 MATLAB 参考脚本逐行对应，任何调换都会改变等效误差，导致与参考对比失败。三个注入函数 <code>get_off / get_gan / get_tau</code> 用 case 语句把参数映射到通道号，参数化（OFF0..3 等）使得不改代码就能换一组误差。</p>
+      <h3>5. 量化与饱和：远离零四舍五入 + 削顶</h3>
+      <pre>qval   = x_val / DELTA;        // 换算成 LSB 单位
+qclamp = (qval &gt;= 0.0) ? $floor(qval + 0.5) : $ceil(qval - 0.5);  // round half away from zero
+if (qclamp &gt;  FULL) qclamp =  FULL;   // 饱和到 ±8192（满量程码）
+if (qclamp &lt; -FULL) qclamp = -FULL;
+adc_code &lt;= int'(qclamp);</pre>
+      <p><code>DELTA</code>（LSB）= 2/2¹⁴ ≈ 122.07 µV，<code>FULL</code> = 8192。用 <code>$floor/$ceil</code> 实现「恰好 0.5 时远离零舍入」，与 MATLAB <code>round</code> 完全一致——这是 Verilog 与 Python 参考 100% 一致的关键之一。饱和削顶模拟真实 ADC 的输出范围限制。</p>
+      <h3>6. 自验证：I/Q 正交解调估计时序偏移</h3>
+      <pre>cref = $cos(2.0*PI*FIN*tref);   sref = $sin(2.0*PI*FIN*tref);
+sum_i[c] += v * cref;            sum_q[c] += v * sref;
+tau_est[i] = $atan2(sum_i[i], sum_q[i]) / (2.0*PI*FIN);</pre>
+      <p>把每个通道的采样值分别乘以同相（cos）与正交（sin）参考并累加，得到信号的复振幅：其辐角 = 2π·fin·τ，用 <code>atan2</code> 一步解出 τ。这是数字接收机里经典的载波相位估计思想。同理：样本均值 → 失调估计；MAD 比值 → 增益估计。三类失配各配一个估计器，形成完整的自校验闭环。</p>
+      <h3>仿真验证结果（sim.log 实测 + compare.py）</h3>
+      <table>
+        <tr><th>通道</th><th>失调 估计 / 注入 (V)</th><th>增益因子 估计 / 注入</th><th>时序偏移 估计 / 注入 (ps)</th></tr>
+        <tr><td>CH0</td><td>0.000000 / 0.000000</td><td>1.000000 / 1.000000</td><td>0.000000 / 0.000000</td></tr>
+        <tr><td>CH1</td><td>+0.005026 / +0.005000</td><td>0.995012 / 0.995025</td><td>+1.999640 / +2.000000</td></tr>
+        <tr><td>CH2</td><td>−0.002991 / −0.003000</td><td>1.003004 / 1.003009</td><td>−1.500472 / −1.500000</td></tr>
+        <tr><td>CH3</td><td>+0.002004 / +0.002000</td><td>0.998003 / 0.998004</td><td>+1.199578 / +1.200000</td></tr>
+      </table>
+      <div class="note">✅ <code>compare.py</code> 结果：Verilog 输出 vs Python 双精度参考 <b>65536/65536 点完全一致</b>（max diff = 0 LSB）——两个独立实现逐点吻合，证明模型与误差注入逻辑正确。估计值与注入值的微小偏差（如 0.005026 vs 0.005）来自量化噪声，属于正常现象。</div>
+    </section>
+
+    <!-- ⑥ 学习任务清单 -->
+    <section id="tasks" data-title="学习任务清单">
+      <h2>⑥ 学习任务清单</h2>
+      <div class="progress"><div id="taskBar"></div></div>
+      <div id="taskCount"></div>
+      <ul id="taskList"></ul>
+      <button class="btn" id="taskReset">重置任务进度</button>
+      <p class="muted">勾选状态保存在浏览器本地，刷新页面不会丢失。</p>
+    </section>
+
+    <!-- ⑦ 小测验 -->
+    <section id="quiz" data-title="小测验">
+      <h2>⑦ 小测验</h2>
+      <div id="quizList"></div>
+      <div id="quizScore"></div>
+      <button class="btn" id="quizReset">重新测验</button>
+    </section>
+
+    <!-- ⑧ 术语表 -->
+    <section id="glossary" data-title="术语表">
+      <h2>⑧ 术语表</h2>
+      <dl id="glossaryList"></dl>
+    </section>
+
+    <!-- ⑨ 我的笔记 -->
+    <section id="notes" data-title="我的笔记">
+      <h2>⑨ 我的笔记</h2>
+      <textarea id="noteArea" placeholder="在这里记录你的疑问、心得、待办……内容自动保存在浏览器本地。"></textarea>
+      <div id="noteStatus"></div>
+    </section>
+
+    <footer>由 fpga-tutor 生成 · 单文件离线学习页面 · 数据仅保存在本浏览器</footer>
+  </main>
+</div>
+
+<script>
+// ================== 数据区（由 fpga-tutor 生成时填充） ==================
+
+// 学习任务清单：从易到难
+const TASKS = [
+  '通读 src/ti_adc_model.sv，画出单通道数据流：采样时刻 → 失调 → 增益 → 量化 → 饱和 → 输出',
+  '手算验证三个数：fin 精确值、LSB、满量程码；再用欧几里得算法验证 M=3101 与 N=65536 互质',
+  '把 N_BITS 改成 12 重新仿真，观察量化噪声变大后，OFF / MAD / TAU 估计精度如何变化',
+  '把通道 0 的 PHS0 改成 2000e-15（注入 2 ps 偏移）重新仿真，看 TAU est 能否测出，思考最小可测偏移由什么决定',
+  '写一个 5 行 Python 脚本统计 adc_out_codes.txt 中每个通道的样本数，验证 4 通道各 16384 点均匀分布',
+  '把 OFF1..OFF3 全部设为 0 重新仿真，观察 mean_est 是否归零，体会均值估计器的原理与局限',
+  '运行 tools/compare.py，理解为什么 Verilog 与 Python 参考能 100% 一致（同一算法、同一舍入规则）',
+  '拓展思考：改成 8 通道 8 GSps 需要改哪些参数与逻辑？时间交织采样还有哪些隐藏问题？',
+  '给别人讲一遍：为什么 TI-ADC 的时序偏移会在频谱上产生镜像杂散？（试着画出频谱图）'
+];
+
+// 小测验：{ q, options: [], answer: 下标, explain }
+const QUIZ = [
+  { q: '该模型的等效总采样率是多少？', options: ['1 GSps', '4 GSps', '16 GSps', '65536 GSps'], answer: 1, explain: '4 个通道各 1 GSps 时间交织，等效总采样率 4 GSps（参数 FS = 4.0e9）。' },
+  { q: '相干采样中 M=3101 为什么选质数？', options: ['质数更省资源', '保证记录内为整周期且样本在通道间均匀分布', 'MATLAB 默认值，无特殊原因', '为了凑 65536'], answer: 1, explain: 'M 与 N 互质保证记录含整数个周期（无频谱泄漏）；M 为质数时样本在 4 通道间分布完全均匀，避免通道欠采样。' },
+  { q: '输入单音频率 fin 约为多少？', options: ['189.27 MHz', '3101 MHz', '65536 kHz', '1 GHz'], answer: 0, explain: 'fin = FS·M/N = 4e9 × 3101 / 65536 ≈ 189.2700 MHz。' },
+  { q: '时序偏移（skew）在模型中是如何注入的？', options: ['直接改变输出码值', '平移采样时刻 t_sample = n/FS + τ(ch)', '改变量化位数', '修改时钟频率'], answer: 1, explain: 'skew 的本质是采样时钟沿偏差，所以模型平移采样时刻，等效改变信号相位 2π·fin·τ。' },
+  { q: '14 位 ADC 的 LSB（最低有效位）是多少？', options: ['122.07 µV', '1 mV', '244.14 µV', '61.04 µV'], answer: 0, explain: 'LSB = 2·V_REF / 2^N = 2 / 16384 ≈ 122.07 µV。' },
+  { q: '测试平台用什么方法估计时序偏移 τ？', options: ['FFT 峰值查找', 'I/Q 正交解调 + atan2', '最小二乘直线拟合', '计数 valid 脉冲宽度'], answer: 1, explain: '采样值分别与 cos/sin 参考相乘累加得到复振幅，辐角 = 2π·fin·τ，atan2 直接解出 τ——经典的载波相位估计。' },
+  { q: '通道增益误差用哪个估计量？', options: ['样本均值', 'MAD 比值 MAD(ch0)/MAD(ch)', '信号方差', '最大值'], answer: 1, explain: 'MAD（平均绝对偏差）与幅度成正比，比值消除公共因子，故 MAD(ch0)/MAD(ch) ≈ 1/gan(ch)。' },
+  { q: 'ti_adc_model 能综合到 FPGA 上吗？', options: ['能，行为级代码都支持综合', '不能，real 运算与 $sin 仅为仿真设计', '能，但需要加时序约束', '取决于目标器件'], answer: 1, explain: '模型使用 real 类型与 $sin/$floor 等系统函数，是纯仿真行为模型（代码注释也明确标注不可综合）。' },
+  { q: '量化采用什么舍入规则？', options: ['截断（向零）', '四舍六入五成双（银行家舍入）', '远离零四舍五入（round half away from zero）', '向下取整'], answer: 2, explain: '用 $floor(q+0.5)/$ceil(q−0.5) 实现远离零舍入，与 MATLAB round 完全一致——这是与参考 100% 一致的关键。' }
+];
+
+// 术语表：{ term, def }
+const GLOSSARY = [
+  { term: 'TI-ADC（时间交织 ADC）', def: 'Time-Interleaved ADC：多个低速 ADC 通道轮流采样同一输入，等效总采样率 = 通道数 × 单通道采样率。本工程 4 × 1 GSps = 4 GSps。' },
+  { term: '相干采样（Coherent Sampling）', def: '输入频率满足 fin = FS·M/N（M、N 互质），采集记录恰好包含整数个周期，FFT 无频谱泄漏。' },
+  { term: '时序偏移（Timing Skew）', def: '通道间采样时刻的偏差，TI-ADC 最主要的误差源之一，会在频谱上产生与信号幅度成正比的镜像杂散。' },
+  { term: '失调（Offset）', def: '通道输出的直流偏置误差，表现为频谱零频附近的杂散。' },
+  { term: '增益误差（Gain Mismatch）', def: '通道幅值缩放不一致，影响整体增益平坦度，产生镜像分量。' },
+  { term: 'LSB', def: '最低有效位 = 2·V_REF / 2^N。本工程 2/16384 ≈ 122.07 µV，满量程码 ±8192。' },
+  { term: 'MAD（平均绝对偏差）', def: 'Mean Absolute Deviation：|v| 的均值，与信号幅度成正比，本工程用它估计通道增益比。' },
+  { term: 'I/Q 解调', def: '把信号分别与同相（cos）和正交（sin）参考相乘后累加，提取复振幅的幅度与相位，本工程用于估计时序偏移 τ。' },
+  { term: 'Round-Half-Away-From-Zero', def: '四舍五入到最近整数、恰为 0.5 时远离零舍入——与 MATLAB round 一致，是与参考逐点一致的关键。' },
+  { term: '行为模型（Behavioral Model）', def: '只描述功能行为的仿真模型，使用 real、$sin 等不可综合结构，不面向硬件实现。' },
+  { term: '饱和（Clipping）', def: '量化结果超过 ±满量程码时截断到边界，模拟真实 ADC 的输出削顶。' },
+  { term: '自验证测试平台（Self-Checking TB）', def: 'testbench 自己注入已知误差并估计回来比对，形成「注入 → 提取」闭环，无需人工看波形。' }
+];
+
+// ================== 以下为页面逻辑，无需修改 ==================
+
+// 目录生成
+(function buildToc() {
+  const wrap = document.getElementById('tocLinks');
+  document.querySelectorAll('section[data-title]').forEach(sec => {
+    const a = document.createElement('a');
+    a.href = '#' + sec.id;
+    a.textContent = sec.dataset.title;
+    a.dataset.target = sec.id;
+    wrap.appendChild(a);
+  });
+  const links = wrap.querySelectorAll('a');
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.toggle('active', l.dataset.target === e.target.id));
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  document.querySelectorAll('section[data-title]').forEach(s => io.observe(s));
+})();
+
+// 任务清单（localStorage）
+(function buildTasks() {
+  const list = document.getElementById('taskList');
+  const bar = document.getElementById('taskBar');
+  const count = document.getElementById('taskCount');
+  const KEY = 'fpga.tasks';
+  let done = {};
+  try { done = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { done = {}; }
+  const render = () => {
+    list.innerHTML = '';
+    const n = TASKS.length, d = Object.values(done).filter(Boolean).length;
+    bar.style.width = n ? (d / n * 100) + '%' : '0%';
+    count.textContent = `已完成 ${d} / ${n} 项`;
+    TASKS.forEach((t, i) => {
+      const li = document.createElement('li');
+      li.className = done[i] ? 'done' : '';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = !!done[i];
+      cb.addEventListener('change', () => {
+        done[i] = cb.checked;
+        localStorage.setItem(KEY, JSON.stringify(done));
+        render();
+      });
+      const span = document.createElement('span');
+      span.className = 'task-text';
+      span.textContent = t;
+      li.appendChild(cb); li.appendChild(span);
+      list.appendChild(li);
+    });
+  };
+  render();
+  document.getElementById('taskReset').addEventListener('click', () => {
+    if (confirm('确定清空任务进度？')) { done = {}; localStorage.removeItem(KEY); render(); }
+  });
+})();
+
+// 小测验
+(function buildQuiz() {
+  const wrap = document.getElementById('quizList');
+  const scoreEl = document.getElementById('quizScore');
+  const KEY = 'fpga.quiz';
+  let state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { state = {}; }
+  const render = () => {
+    wrap.innerHTML = '';
+    let correct = 0, answered = 0;
+    QUIZ.forEach((q, qi) => {
+      const div = document.createElement('div');
+      div.className = 'quiz-item';
+      const qEl = document.createElement('div');
+      qEl.className = 'q';
+      qEl.textContent = `${qi + 1}. ${q.q}`;
+      div.appendChild(qEl);
+      q.options.forEach((opt, oi) => {
+        const label = document.createElement('label');
+        const input = document.createElement('input');
+        input.type = 'radio';
+        input.name = 'q' + qi;
+        input.value = oi;
+        input.checked = state[qi] === oi;
+        input.addEventListener('change', () => {
+          state[qi] = oi;
+          localStorage.setItem(KEY, JSON.stringify(state));
+          render();
+        });
+        label.appendChild(input);
+        label.appendChild(document.createTextNode(' ' + opt));
+        div.appendChild(label);
+      });
+      const fb = document.createElement('div');
+      fb.className = 'feedback';
+      if (state[qi] !== undefined) {
+        const right = state[qi] === q.answer;
+        answered++;
+        if (right) correct++;
+        div.className = 'quiz-item ' + (right ? 'correct' : 'wrong');
+        fb.textContent = right ? '✅ 回答正确' : '❌ 回答错误';
+        const exp = document.createElement('div');
+        exp.className = 'explain';
+        exp.textContent = '解析：' + q.explain;
+        fb.appendChild(exp);
+      }
+      div.appendChild(fb);
+      wrap.appendChild(div);
+    });
+    scoreEl.textContent = answered ? `已答 ${answered} / ${QUIZ.length}，正确 ${correct} 题` : '答题后显示得分';
+  };
+  render();
+  document.getElementById('quizReset').addEventListener('click', () => {
+    state = {}; localStorage.removeItem(KEY); render();
+  });
+})();
+
+// 术语表
+(function buildGlossary() {
+  const dl = document.getElementById('glossaryList');
+  GLOSSARY.forEach(g => {
+    const dt = document.createElement('dt');
+    dt.textContent = g.term;
+    const dd = document.createElement('dd');
+    dd.textContent = g.def;
+    dl.appendChild(dt); dl.appendChild(dd);
+  });
+})();
+
+// 笔记（自动保存）
+(function buildNotes() {
+  const ta = document.getElementById('noteArea');
+  const status = document.getElementById('noteStatus');
+  const KEY = 'fpga.notes';
+  ta.value = localStorage.getItem(KEY) || '';
+  let timer = null;
+  ta.addEventListener('input', () => {
+    status.textContent = '保存中…';
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      localStorage.setItem(KEY, ta.value);
+      status.textContent = '已保存 ' + new Date().toLocaleTimeString();
+    }, 500);
+  });
+})();
+</script>
+</body>
+</html>
