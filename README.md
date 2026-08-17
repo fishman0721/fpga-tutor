@@ -19,8 +19,7 @@
 
 进入 [`examples/`](examples/) 下载示例页面，双击浏览器打开即可体验：
 
-- [`36_sobel`](examples/36_sobel/fpga_study.html)：串口收图 → Sobel 边缘检测 → VGA 显示（含 4 层下钻框图）
-- [`ti_adc_sim`](examples/ti_adc_sim/fpga_study.html)：4 通道时间交织 ADC 行为模型（仿真验证 100% 一致）
+- [`ti_adc_sim`](examples/ti_adc_sim/fpga_study.html)：4 通道时间交织 ADC 行为模型（含下钻框图，仿真验证 100% 一致）
 
 ## 快速开始（普通用户）
 

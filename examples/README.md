@@ -6,8 +6,7 @@
 
 | 示例 | 工程简介 | 亮点 |
 |---|---|---|
-| [`36_sobel/`](36_sobel/) | 野火征途Pro（EP4CE10F17C8）上的「串口收图 → Sobel 边缘检测 → VGA 显示 + 串口回传」 | **可点击下钻框图**：顶层 → sobel_ctrl 流水线 → vga 链路 → vga_pic 内部，共 4 层，点方块逐层深入 |
-| [`ti_adc_sim/`](ti_adc_sim/) | 4 通道时间交织 ADC（TI-ADC）行为级采样模型（SystemVerilog，复刻 MATLAB 参考脚本） | 仿真自验证闭环：Verilog 输出与 Python 双精度参考 65536 点 100% 一致 |
+| [`ti_adc_sim/`](ti_adc_sim/) | 4 通道时间交织 ADC（TI-ADC）行为级采样模型（SystemVerilog，复刻 MATLAB 参考脚本） | **可点击下钻框图**（系统框图 → DUT 内部数据流水线）+ 仿真自验证闭环：Verilog 输出与 Python 双精度参考 65536 点 100% 一致 |
 
 ## 🖱️ 怎么看
 

@@ -58,9 +58,8 @@
   code { font-family: Consolas, "Courier New", monospace; font-size: .92em; }
   p code, li code, td code { background: var(--panel2); padding: 1px 5px; border-radius: 4px; color: var(--accent); }
   .note { border-left: 3px solid var(--warn); background: rgba(227,179,65,.08); padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 14px; }
-  /* 层级图 */
+  /* 层级示意图 */
   .tree { font-family: Consolas, monospace; font-size: 13.5px; line-height: 1.7; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px; overflow-x: auto; white-space: pre; color: #c9d7e8; }
-  /* 模块层级示意图 */
   .dia-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin: 12px 0; overflow-x: auto; }
   .dia-wrap svg { display: block; width: 100%; height: auto; max-width: 920px; }
   .wire { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 7 7; animation: wireflow 1.2s linear infinite; }
@@ -75,6 +74,40 @@
   .dia-lbl { fill: var(--muted); font-size: 11px; }
   .dia-port { fill: var(--accent2); }
   .dia-arrow { fill: var(--accent); }
+  /* 可下钻层级框图 */
+  .drill-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 12px 0; }
+  #drillCrumb { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .drill-crumb {
+    background: var(--panel2); color: var(--muted); border: 1px solid var(--line);
+    border-radius: 20px; padding: 3px 12px; font-size: 12.5px; cursor: pointer; font-family: inherit;
+  }
+  .drill-crumb:hover, .drill-crumb.current { color: var(--accent); border-color: var(--accent); }
+  .drill-toolbar { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .drill-toolbar .zoom-val { color: var(--muted); font-size: 12.5px; min-width: 46px; text-align: center; }
+  #drillScene { overflow-x: auto; }
+  #drillScene svg { display: block; height: auto; }
+  .drill-box { fill: var(--panel2); stroke: var(--line); stroke-width: 1.5; }
+  .drill-box.deep { stroke: var(--accent); stroke-width: 2; }
+  .drill-box.ext { fill: #1b2634; stroke: var(--muted); stroke-dasharray: 5 4; }
+  .drill-g { cursor: pointer; }
+  .drill-g:hover .drill-box { stroke: var(--accent2); }
+  .drill-box-title { fill: var(--fg); font-size: 16px; font-weight: 600; }
+  .drill-box-sub { fill: var(--muted); font-size: 11.5px; }
+  .drill-box-hint { fill: var(--accent); font-size: 12px; }
+  .drill-wire-label { fill: var(--muted); font-size: 11.5px; }
+  .drill-port-label { fill: var(--muted); font-size: 10.5px; }
+  /* 文字描边光晕：即使被信号线穿过也能清晰可读 */
+  .drill-box-title, .drill-box-sub, .drill-box-hint, .drill-wire-label, .drill-port-label {
+    paint-order: stroke; stroke: var(--bg); stroke-width: 3.5; stroke-linejoin: round;
+  }
+  .drill-head { margin-bottom: 6px; }
+  .drill-title { color: var(--accent); font-weight: 600; font-size: 14px; }
+  .drill-file { font-size: 12px; }
+  .drill-desc { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  #drillHint { color: var(--muted); font-size: 12px; margin-top: 8px; }
+  #drillPorts { margin-top: 10px; border-top: 1px dashed var(--line); padding-top: 8px; }
+  .drill-port-title { margin-bottom: 6px; font-size: 14px; }
+  .drill-port-none { color: var(--muted); font-size: 13px; }
   /* 任务清单 */
   #taskList { list-style: none; }
   #taskList li {
@@ -141,7 +174,7 @@
       <p><b>工程类型</b>：纯仿真验证工程（Vivado/xsim），<b>无开发板、无约束文件</b>；被测模型为不可综合的行为模型（real 运算 + $sin），学习重点是「模型如何工作」与「误差如何被测量」。配套 Python 工具（gen_reference.py / compare.py）构成双实现交叉验证闭环。</p>
       <p><b>关键指标</b>：总采样率 4 GSps（4 通道 × 1 GSps 时间交织）；14 位量化、±1 V 满量程、LSB ≈ 122.07 µV；相干采样单音输入 fin ≈ 189.27 MHz（M=3101 / N=65536）；每记录 65536 个样本。</p>
       <p><b>验证状态</b>：✅ 仿真自验证通过——Verilog 输出与 Python 双精度参考 <b>65536/65536 点 100% 一致</b>（max diff = 0 LSB）；注入的失调 / 增益 / 时序偏移均被测试平台准确反估（结果表见「关键代码解读」末尾）。</p>
-      <div class="note">💡 学习建议：先读概览，再按模块层级逐层深入；每读完一个模块，回到学习任务清单勾选完成。</div>
+      <div class="note">💡 学习建议：先读概览，再进入第③章的框图逐层点击下钻；每看完一个模块，回到学习任务清单勾选完成。</div>
     </section>
 
     <!-- ② 目录结构 -->
@@ -167,108 +200,22 @@
       <p class="muted">说明：IP 核、仿真与编译产物目录仅列出名称，学习重点在 RTL 与约束文件。</p>
     </section>
 
-    <!-- ③ 模块层级 -->
+    <!-- ③ 模块层级（可点击下钻） -->
     <section id="hierarchy" data-title="模块层级">
-      <h2>③ 模块层级</h2>
-      <p>系统模块框图（教程风格：模块独立成块、信号箭头连线；虚线为流动动画）：</p>
-      <div class="dia-wrap">
-      <svg viewBox="0 0 1020 440" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ti_adc_sim 系统模块框图">
-        <text x="30" y="38" class="dia-sub">注：tb_ti_adc 同时承担激励生成与结果采集，图中按两侧画出（实为同一模块 sim/tb_ti_adc.sv）。</text>
-
-        <!-- A：激励侧（tb_ti_adc） -->
-        <rect x="15" y="120" width="210" height="180" rx="10" class="dia-box"/>
-        <text x="35" y="150" class="dia-title">tb_ti_adc</text>
-        <text x="35" y="168" class="dia-sub">sim/tb_ti_adc.sv</text>
-        <text x="35" y="188" class="dia-sub">激励侧：时钟 / 复位生成</text>
-        <rect x="222" y="157" width="6" height="6" class="dia-port"/>
-        <rect x="222" y="227" width="6" height="6" class="dia-port"/>
-
-        <!-- B：DUT -->
-        <rect x="430" y="70" width="280" height="310" rx="10" class="dia-box-dut"/>
-        <text x="455" y="100" class="dia-title">ti_adc_model（DUT）</text>
-        <text x="455" y="118" class="dia-sub">src/ti_adc_model.sv · 行为模型（不可综合）</text>
-        <rect x="427" y="157" width="6" height="6" class="dia-port"/>
-        <rect x="427" y="227" width="6" height="6" class="dia-port"/>
-        <rect x="707" y="147" width="6" height="6" class="dia-port"/>
-        <rect x="707" y="197" width="6" height="6" class="dia-port"/>
-        <rect x="707" y="247" width="6" height="6" class="dia-port"/>
-        <rect x="707" y="297" width="6" height="6" class="dia-port"/>
-
-        <!-- DUT 内部数据流水线 -->
-        <text x="570" y="322" class="dia-sub" text-anchor="middle">DUT 内部数据流水线</text>
-        <rect x="445" y="330" width="80" height="50" rx="6" class="dia-box"/>
-        <text x="485" y="346" class="dia-txt" text-anchor="middle">采样时刻</text>
-        <text x="485" y="362" class="dia-txt-mono" text-anchor="middle">n/FS+τ(ch)</text>
-        <text x="485" y="378" class="dia-sub" text-anchor="middle">→ x_in</text>
-        <line x1="525" y1="355" x2="536" y2="355" stroke="#4cc2ff" stroke-width="2"/>
-        <polygon points="531,349 543,355 531,361" class="dia-arrow"/>
-        <rect x="539" y="330" width="80" height="50" rx="6" class="dia-box"/>
-        <text x="579" y="346" class="dia-txt" text-anchor="middle">失调 + 增益</text>
-        <text x="579" y="362" class="dia-txt-mono" text-anchor="middle">(x+off)×gan</text>
-        <text x="579" y="378" class="dia-sub" text-anchor="middle">→ x_val</text>
-        <line x1="619" y1="355" x2="630" y2="355" stroke="#4cc2ff" stroke-width="2"/>
-        <polygon points="625,349 637,355 625,361" class="dia-arrow"/>
-        <rect x="633" y="330" width="72" height="50" rx="6" class="dia-box"/>
-        <text x="669" y="346" class="dia-txt" text-anchor="middle">量化 + 饱和</text>
-        <text x="669" y="362" class="dia-txt-mono" text-anchor="middle">±8192</text>
-        <text x="669" y="378" class="dia-sub" text-anchor="middle">→ adc_code</text>
-
-        <!-- C：接收侧（tb_ti_adc） -->
-        <rect x="830" y="120" width="175" height="180" rx="10" class="dia-box"/>
-        <text x="850" y="150" class="dia-title">tb_ti_adc</text>
-        <text x="850" y="168" class="dia-sub">sim/tb_ti_adc.sv</text>
-        <text x="850" y="188" class="dia-sub">接收侧：采集 + 自验证</text>
-        <rect x="827" y="147" width="6" height="6" class="dia-port"/>
-        <rect x="827" y="197" width="6" height="6" class="dia-port"/>
-        <rect x="827" y="247" width="6" height="6" class="dia-port"/>
-        <rect x="827" y="297" width="6" height="6" class="dia-port"/>
-
-        <!-- 输出文件 -->
-        <rect x="805" y="340" width="210" height="50" rx="8" class="dia-box-dash"/>
-        <text x="910" y="363" class="dia-txt-mono" text-anchor="middle">sim_out/adc_out_codes.txt</text>
-        <text x="910" y="379" class="dia-sub" text-anchor="middle">逐样本写入（idx ch code）</text>
-
-        <!-- 独立探针 -->
-        <rect x="15" y="350" width="210" height="55" rx="8" class="dia-box-dash"/>
-        <text x="35" y="374" class="dia-txt" font-weight="600">tb_sin_check</text>
-        <text x="35" y="390" class="dia-sub">能力探针 · 不例化 DUT</text>
-
-        <!-- 信号连线：输入 -->
-        <path d="M225,160 H427" class="wire"/>
-        <polygon points="420,154 430,160 420,166" class="dia-arrow"/>
-        <text x="327" y="152" class="dia-lbl" text-anchor="middle">clk · 4 GHz</text>
-        <path d="M225,230 H427" class="wire"/>
-        <polygon points="420,224 430,230 420,236" class="dia-arrow"/>
-        <text x="327" y="222" class="dia-lbl" text-anchor="middle">rst_n（同步复位）</text>
-
-        <!-- 信号连线：输出 -->
-        <path d="M710,150 H827" class="wire"/>
-        <polygon points="821,144 830,150 821,156" class="dia-arrow"/>
-        <text x="768" y="142" class="dia-lbl" text-anchor="middle">adc_code[14:0]</text>
-        <path d="M710,200 H827" class="wire"/>
-        <polygon points="821,194 830,200 821,206" class="dia-arrow"/>
-        <text x="768" y="192" class="dia-lbl" text-anchor="middle">ch_id[1:0]</text>
-        <path d="M710,250 H827" class="wire"/>
-        <polygon points="821,244 830,250 821,256" class="dia-arrow"/>
-        <text x="768" y="242" class="dia-lbl" text-anchor="middle">valid</text>
-        <path d="M710,300 H827" class="wire"/>
-        <polygon points="821,294 830,300 821,306" class="dia-arrow"/>
-        <text x="768" y="292" class="dia-lbl" text-anchor="middle">idx[15:0]</text>
-
-        <!-- 写入文件 -->
-        <path d="M910,300 V337" class="wire"/>
-        <polygon points="904,327 916,327 910,339" class="dia-arrow"/>
-        <text x="922" y="322" class="dia-lbl">写入</text>
-
-        <!-- 图例 -->
-        <text x="30" y="432" class="dia-sub">图例：</text>
-        <line x1="67" y1="428" x2="107" y2="428" stroke="#4cc2ff" stroke-width="2" stroke-dasharray="7 7"/>
-        <text x="115" y="432" class="dia-sub">信号线（流动动画）</text>
-        <rect x="227" y="429" width="8" height="8" class="dia-port"/>
-        <text x="240" y="432" class="dia-sub">端口</text>
-        <rect x="283" y="429" width="8" height="8" rx="2" class="dia-box-dash"/>
-        <text x="296" y="432" class="dia-sub">独立模块 / 文件</text>
-      </svg>
+      <h2>③ 模块层级（可点击下钻）</h2>
+      <p>系统模块框图：<b>点击带「点击进入 ↓」的方块</b>进入其内部框图，逐层深入，每一层都是信号流动图；面包屑或 Esc 返回。</p>
+      <div class="drill-wrap">
+        <div class="drill-toolbar">
+          <button class="btn" id="drillZoomOut" type="button">缩小 −</button>
+          <span class="zoom-val" id="drillZoomVal">100%</span>
+          <button class="btn" id="drillZoomIn" type="button">放大 ＋</button>
+          <button class="btn" id="drillZoomFit" type="button">适应</button>
+        </div>
+        <div id="drillCrumb"></div>
+        <div class="drill-head" id="drillInfo"></div>
+        <div id="drillScene"></div>
+        <div id="drillPorts"></div>
+        <div id="drillHint"></div>
       </div>
       <p class="muted">各模块职责速览：</p>
       <div class="card">
@@ -296,34 +243,6 @@
     <section id="signals" data-title="端口与信号">
       <h2>④ 端口与信号</h2>
       <p>顶层模块端口：</p>
-      <div class="dia-wrap">
-      <svg viewBox="0 0 660 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ti_adc_model 端口框图">
-        <rect x="240" y="15" width="180" height="210" rx="10" class="dia-box-dut"/>
-        <text x="330" y="52" class="dia-title" text-anchor="middle">ti_adc_model</text>
-        <text x="330" y="70" class="dia-sub" text-anchor="middle">14-bit · 4 GSps · 行为模型</text>
-        <!-- 输入端口 -->
-        <path d="M150,85 H236" class="wire"/>
-        <polygon points="228,79 240,85 228,91" class="dia-arrow"/>
-        <text x="142" y="89" class="dia-lbl" text-anchor="end">clk</text>
-        <path d="M150,145 H236" class="wire"/>
-        <polygon points="228,139 240,145 228,151" class="dia-arrow"/>
-        <text x="142" y="149" class="dia-lbl" text-anchor="end">rst_n</text>
-        <!-- 输出端口 -->
-        <path d="M424,85 H520" class="wire"/>
-        <polygon points="512,79 524,85 512,91" class="dia-arrow"/>
-        <text x="530" y="89" class="dia-lbl">adc_code[14:0]</text>
-        <path d="M424,125 H520" class="wire"/>
-        <polygon points="512,119 524,125 512,131" class="dia-arrow"/>
-        <text x="530" y="129" class="dia-lbl">ch_id[1:0]</text>
-        <path d="M424,165 H520" class="wire"/>
-        <polygon points="512,159 524,165 512,171" class="dia-arrow"/>
-        <text x="530" y="169" class="dia-lbl">valid</text>
-        <path d="M424,205 H520" class="wire"/>
-        <polygon points="512,199 524,205 512,211" class="dia-arrow"/>
-        <text x="530" y="209" class="dia-lbl">idx[15:0]</text>
-      </svg>
-      </div>
-      <p class="muted">方向约定：箭头流入 = 输入，流出 = 输出。下表给出各位宽与作用。</p>
       <table>
         <tr><th>信号</th><th>方向</th><th>位宽</th><th>作用</th></tr>
         <tr><td><code>clk</code></td><td>input</td><td>1</td><td>4 GHz 采样时钟（周期 250 ps）</td></tr>
@@ -468,7 +387,294 @@ const GLOSSARY = [
   { term: '自验证测试平台（Self-Checking TB）', def: 'testbench 自己注入已知误差并估计回来比对，形成「注入 → 提取」闭环，无需人工看波形。' }
 ];
 
+// 层级框图（可点击下钻）：
+//   root 为起始场景 id；scenes[id] = { title, file?, desc?, w, h, boxes[], wires[] }
+//   box:  { id, label, sub?, x, y, w, h, scene?, kind? }
+//         scene 指向子场景 id（点击下钻）；kind:'ext' 表示外部端子（虚线框）
+//   wire: { from, to, label? }  // 端口位置由渲染器自动计算，label 标注在连线上
+// 叶子模块的端口表放在 PORTS 中：{ boxId: [{name, dir, width, desc}] }
+const DRILL = {
+  root: 'top',
+  scenes: {
+    // ============ 第 1 层：系统框图 ============
+    top: {
+      title: 'ti_adc_sim 系统框图',
+      desc: '测试平台 tb_ti_adc 同时承担激励生成与结果采集（图中按两侧画出，实为同一模块 sim/tb_ti_adc.sv）；clk 为 4 GHz 采样时钟（周期 250 ps），rst_n 为同步复位。DUT 输出四路信号 adc_code / ch_id / valid / idx。点击 ti_adc_model 可下钻查看内部数据流水线。',
+      w: 1170, h: 420,
+      boxes: [
+        { id: 'tb_stim', label: 'tb_ti_adc（激励侧）', sub: '时钟 / 复位生成', file: 'sim/tb_ti_adc.sv', x: 20, y: 150, w: 190, h: 140, outs: ['clk · 4 GHz', 'rst_n'] },
+        { id: 'dut', label: 'ti_adc_model（DUT）', sub: '4 通道 TI-ADC 行为模型', file: 'src/ti_adc_model.sv', scene: 'dut', x: 400, y: 110, w: 240, h: 220, ins: ['clk · 4 GHz', 'rst_n'], outs: ['adc_code[14:0]', 'ch_id[1:0]', 'valid', 'idx[15:0]'] },
+        { id: 'tb_sink', label: 'tb_ti_adc（接收侧）', sub: '采集 + 自验证', file: 'sim/tb_ti_adc.sv', x: 800, y: 150, w: 180, h: 140, ins: ['adc_code[14:0]', 'ch_id[1:0]', 'valid', 'idx[15:0]'], outs: ['逐样本写入'] },
+        { id: 'file_ext', kind: 'ext', label: 'sim_out/', sub: 'adc_out_codes.txt', x: 1030, y: 160, w: 130, h: 90, ins: ['逐样本写入'] },
+        { id: 'sin_ext', kind: 'ext', label: 'tb_sin_check', sub: '能力探针 · 不例化 DUT', x: 20, y: 350, w: 190, h: 60 }
+      ],
+      wires: [
+        { from: 'tb_stim', to: 'dut' },
+        { from: 'tb_stim', to: 'dut' },
+        { from: 'dut', to: 'tb_sink', label: 'adc_code[14:0]' },
+        { from: 'dut', to: 'tb_sink', label: 'ch_id[1:0]' },
+        { from: 'dut', to: 'tb_sink', label: 'valid' },
+        { from: 'dut', to: 'tb_sink', label: 'idx[15:0]' },
+        { from: 'tb_sink', to: 'file_ext', label: '逐样本写入' }
+      ]
+    },
+    // ============ 第 2 层：DUT 内部数据流水线 ============
+    dut: {
+      title: 'ti_adc_model —— 内部数据流水线',
+      file: 'src/ti_adc_model.sv',
+      desc: '每个时钟输出一个样本：由样本序号 n 计算采样时刻 t_sample = n/FS + τ(ch)（τ 为皮秒级通道时序偏移），经 $sin 得到 x_in；按 MATLAB 顺序注入失调与增益 (x+off)×gan；最后按 LSB 量化（远离零四舍五入）并饱和到 ±8192。ch_id = n[1:0] 实现 4 通道时间交织（等效 4 GSps），valid 每样本一拍高电平，idx 为 0..65535 序号。',
+      w: 1000, h: 380,
+      boxes: [
+        { id: 'n_ext', kind: 'ext', label: '样本序号', sub: 'n = 0..N-1 内部计数', x: 20, y: 130, w: 120, h: 110, outs: ['n[15:0]'] },
+        { id: 'skew', label: '采样时刻', sub: 'n/FS + τ(ch) → $sin', x: 190, y: 130, w: 170, h: 110, ins: ['n[15:0]'], outs: ['x_in'] },
+        { id: 'err', label: '失调 + 增益', sub: '(x+off)×gan', x: 410, y: 130, w: 170, h: 110, ins: ['x_in'], outs: ['x_val'] },
+        { id: 'q', label: '量化 + 饱和', sub: 'LSB 舍入 ±8192', x: 630, y: 130, w: 170, h: 110, ins: ['x_val'], outs: ['adc_code[14:0]'] },
+        { id: 'out_ext', kind: 'ext', label: '输出', sub: 'adc_code / ch_id / valid / idx', x: 850, y: 130, w: 140, h: 110, ins: ['adc_code[14:0]'] },
+        { id: 'ch_ext', kind: 'ext', label: '通道轮换：ch_id = n[1:0] · 4 通道 × 1 GSps', sub: '失调/增益/时序偏移按通道注入', x: 20, y: 290, w: 420, h: 60 }
+      ],
+      wires: [
+        { from: 'n_ext', to: 'skew', label: 'n[15:0]' },
+        { from: 'skew', to: 'err', label: 'x_in' },
+        { from: 'err', to: 'q', label: 'x_val' },
+        { from: 'q', to: 'out_ext', label: 'adc_code[14:0]' }
+      ]
+    }
+  }
+};
+const PORTS = {};
+
 // ================== 以下为页面逻辑，无需修改 ==================
+
+// 下钻框图渲染器
+(function buildDrill() {
+  const crumbEl = document.getElementById('drillCrumb');
+  const sceneEl = document.getElementById('drillScene');
+  const infoEl = document.getElementById('drillInfo');
+  const hintEl = document.getElementById('drillHint');
+  const stack = [];
+  let curSvg = null, curW = 1, scale = 1;
+  function applyScale() {
+    if (curSvg) curSvg.style.width = (curW * scale) + 'px';
+    const v = document.getElementById('drillZoomVal');
+    if (v) v.textContent = Math.round(scale * 100) + '%';
+  }
+  const NS = 'http://www.w3.org/2000/svg';
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  function distribute(n, top, bot) {
+    if (n <= 0) return [];
+    const step = (bot - top) / (n + 1);
+    return Array.from({ length: n }, (_, i) => +(top + step * (i + 1)).toFixed(1));
+  }
+
+  function render(sceneId, push) {
+    if (push) stack.push(sceneId);
+    while (stack.length && !DRILL.scenes[stack[stack.length - 1]]) stack.pop();
+    if (!stack.length) stack.push(DRILL.root);
+    const scene = DRILL.scenes[stack[stack.length - 1]];
+    if (!scene) { sceneEl.innerHTML = '<p class="muted">框图数据未生成。</p>'; return; }
+
+    crumbEl.innerHTML = '';
+    stack.forEach((sid, i) => {
+      const s = DRILL.scenes[sid];
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'drill-crumb' + (i === stack.length - 1 ? ' current' : '');
+      b.textContent = s.title;
+      if (i < stack.length - 1) b.addEventListener('click', () => { stack.length = i + 1; render(stack[stack.length - 1], false); });
+      crumbEl.appendChild(b);
+    });
+
+    infoEl.innerHTML = '';
+    const head = document.createElement('div');
+    head.className = 'drill-head';
+    head.innerHTML = '<span class="drill-title">' + esc(scene.title) + '</span>'
+      + (scene.file ? ' <code class="drill-file">' + esc(scene.file) + '</code>' : '')
+      + (scene.desc ? '<div class="drill-desc">' + esc(scene.desc) + '</div>' : '');
+    infoEl.appendChild(head);
+
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + scene.w + ' ' + scene.h);
+    const boxMap = {};
+    scene.boxes.forEach(bx => { boxMap[bx.id] = bx; });
+    const inMap = {}, outMap = {};
+    scene.wires.forEach((w, wi) => {
+      (inMap[w.to] = inMap[w.to] || []).push(wi);
+      (outMap[w.from] = outMap[w.from] || []).push(wi);
+    });
+    const portY = {};
+    scene.boxes.forEach(bx => {
+      const ins = inMap[bx.id] || [], outs = outMap[bx.id] || [];
+      const topY = bx.y + 44, botY = bx.y + bx.h - 14;
+      const total = botY - topY;
+      const nin = ins.length, nout = outs.length;
+      // 输入/输出端口按数量自适应分配纵向范围，端口名行距更均匀
+      let inTop, inBot, outTop, outBot;
+      if (nin > 0 && nout > 0) {
+        const inShare = total * nin / (nin + nout);
+        inTop = topY; inBot = Math.min(topY + inShare, botY - 6);
+        outTop = Math.min(Math.max(inBot + 4, topY + 6), botY - 6);
+        outBot = botY;
+      } else if (nin > 0) {
+        inTop = topY; inBot = botY; outTop = botY; outBot = botY;
+      } else {
+        inTop = topY; inBot = topY; outTop = topY; outBot = botY;
+      }
+      const inYs = distribute(nin, inTop, inBot);
+      const outYs = distribute(nout, outTop, outBot);
+      ins.forEach((wi, i) => { portY['i' + wi] = inYs[i]; });
+      outs.forEach((wi, i) => { portY['o' + wi] = outYs[i]; });
+    });
+
+    scene.boxes.forEach(bx => {
+      const g = document.createElementNS(NS, 'g');
+      g.setAttribute('class', 'drill-g');
+      const r = document.createElementNS(NS, 'rect');
+      r.setAttribute('x', bx.x); r.setAttribute('y', bx.y);
+      r.setAttribute('width', bx.w); r.setAttribute('height', bx.h); r.setAttribute('rx', 8);
+      r.setAttribute('class', bx.scene ? 'drill-box deep' : (bx.kind === 'ext' ? 'drill-box ext' : 'drill-box'));
+      g.appendChild(r);
+      const t1 = document.createElementNS(NS, 'text');
+      t1.setAttribute('x', bx.x + bx.w / 2); t1.setAttribute('y', bx.y + 22);
+      t1.setAttribute('text-anchor', 'middle'); t1.setAttribute('class', 'drill-box-title');
+      t1.textContent = bx.label;
+      g.appendChild(t1);
+      if (bx.sub) {
+        const t2 = document.createElementNS(NS, 'text');
+        t2.setAttribute('x', bx.x + bx.w / 2); t2.setAttribute('y', bx.y + 38);
+        t2.setAttribute('text-anchor', 'middle'); t2.setAttribute('class', 'drill-box-sub');
+        t2.textContent = bx.sub;
+        g.appendChild(t2);
+      }
+      if (bx.scene) {
+        const t3 = document.createElementNS(NS, 'text');
+        t3.setAttribute('x', bx.x + bx.w / 2); t3.setAttribute('y', bx.y + bx.h - 8);
+        t3.setAttribute('text-anchor', 'middle'); t3.setAttribute('class', 'drill-box-hint');
+        t3.textContent = '点击进入 ↓';
+        g.appendChild(t3);
+      }
+      const inNames = bx.ins || [], outNames = bx.outs || [];
+      (inMap[bx.id] || []).forEach((wi, i) => {
+        const y = portY['i' + wi];
+        const s = document.createElementNS(NS, 'rect');
+        s.setAttribute('x', bx.x - 3); s.setAttribute('y', y - 3);
+        s.setAttribute('width', 6); s.setAttribute('height', 6); s.setAttribute('class', 'dia-port');
+        g.appendChild(s);
+        if (inNames[i]) {
+          const t = document.createElementNS(NS, 'text');
+          t.setAttribute('x', bx.x + 8); t.setAttribute('y', y + 3.5);
+          t.setAttribute('class', 'drill-port-label');
+          t.textContent = inNames[i];
+          g.appendChild(t);
+        }
+      });
+      (outMap[bx.id] || []).forEach((wi, i) => {
+        const y = portY['o' + wi];
+        const s = document.createElementNS(NS, 'rect');
+        s.setAttribute('x', bx.x + bx.w - 3); s.setAttribute('y', y - 3);
+        s.setAttribute('width', 6); s.setAttribute('height', 6); s.setAttribute('class', 'dia-port');
+        g.appendChild(s);
+        if (outNames[i]) {
+          const t = document.createElementNS(NS, 'text');
+          t.setAttribute('x', bx.x + bx.w - 8); t.setAttribute('y', y + 3.5);
+          t.setAttribute('text-anchor', 'end');
+          t.setAttribute('class', 'drill-port-label');
+          t.textContent = outNames[i];
+          g.appendChild(t);
+        }
+      });
+      g.addEventListener('click', ev => {
+        ev.stopPropagation();
+        if (bx.scene) { render(bx.scene, true); }
+        else { showPorts(bx); }
+      });
+      svg.appendChild(g);
+    });
+
+    scene.wires.forEach((w, wi) => {
+      const a = boxMap[w.from], b = boxMap[w.to];
+      if (!a || !b) return;
+      const sx = a.x + a.w, sy = portY['o' + wi], ex = b.x, ey = portY['i' + wi];
+      // 每条线在间隙内错开通道，避免折线竖段重叠
+      const CH = [-0.10, -0.05, 0, 0.05, 0.10];
+      const mid = sx + (ex - sx) * (0.5 + CH[wi % 5]);
+      const d = Math.abs(sy - ey) < 3
+        ? 'M' + sx + ',' + sy + ' H' + ex
+        : 'M' + sx + ',' + sy + ' H' + mid + ' V' + ey + ' H' + ex;
+      const p = document.createElementNS(NS, 'path');
+      p.setAttribute('d', d); p.setAttribute('class', 'wire');
+      svg.appendChild(p);
+      const dir = ex >= sx ? 1 : -1;
+      const tipX = ex + dir * 4;
+      const pol = document.createElementNS(NS, 'polygon');
+      pol.setAttribute('points', (tipX - dir * 9) + ',' + (ey - 5) + ' ' + tipX + ',' + ey + ' ' + (tipX - dir * 9) + ',' + (ey + 5));
+      pol.setAttribute('class', 'dia-arrow');
+      svg.appendChild(pol);
+      if (w.label) {
+        const t = document.createElementNS(NS, 'text');
+        t.setAttribute('x', mid);
+        t.setAttribute('y', (sy + ey) / 2 - 7);
+        t.setAttribute('text-anchor', 'middle');
+        t.setAttribute('class', 'drill-wire-label');
+        t.textContent = w.label;
+        svg.appendChild(t);
+      }
+    });
+
+    sceneEl.innerHTML = '';
+    sceneEl.appendChild(svg);
+    curSvg = svg; curW = scene.w;
+    const fit = Math.max((sceneEl.clientWidth || 800) / scene.w, 0.5);
+    scale = Math.max(fit, 1.15);
+    applyScale();
+    hintEl.textContent = '提示：点击带「点击进入 ↓」的方块下钻一层；点击其他方块查看端口/说明；面包屑或 Esc 返回上层；工具栏可放大/缩小/适应窗口。';
+  }
+
+  function showPorts(bx) {
+    const list = PORTS[bx.id];
+    const panel = document.getElementById('drillPorts');
+    panel.innerHTML = '';
+    const h = document.createElement('div');
+    h.className = 'drill-port-title';
+    h.innerHTML = '<b>' + esc(bx.label) + '</b>'
+      + (bx.file ? ' <code>' + esc(bx.file) + '</code>' : '');
+    panel.appendChild(h);
+    if (!list || !list.length) {
+      const p = document.createElement('div');
+      p.className = 'drill-port-none';
+      p.textContent = bx.kind === 'ext' ? '外部端子，方向见连线箭头。' : '该模块为内部逻辑或 IP 核，无独立端口表；详细信号见下方表格。';
+      panel.appendChild(p);
+    } else {
+      const tbl = document.createElement('table');
+      tbl.innerHTML = '<tr><th>信号</th><th>方向</th><th>位宽</th><th>说明</th></tr>';
+      list.forEach(pt => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td><code>' + esc(pt.name) + '</code></td><td>' + esc(pt.dir) + '</td><td>' + esc(pt.width) + '</td><td>' + esc(pt.desc) + '</td>';
+        tbl.appendChild(tr);
+      });
+      panel.appendChild(tbl);
+    }
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  document.addEventListener('keydown', ev => {
+    if ((ev.key === 'Escape' || ev.key === 'Backspace') && stack.length > 1) {
+      stack.pop(); render(stack[stack.length - 1], false);
+    }
+  });
+
+  const zIn = document.getElementById('drillZoomIn');
+  const zOut = document.getElementById('drillZoomOut');
+  const zFit = document.getElementById('drillZoomFit');
+  if (zIn) zIn.addEventListener('click', () => { scale = Math.min(scale * 1.25, 4); applyScale(); });
+  if (zOut) zOut.addEventListener('click', () => { scale = Math.max(scale / 1.25, 0.4); applyScale(); });
+  if (zFit) zFit.addEventListener('click', () => {
+    const fit = Math.max((sceneEl.clientWidth || 800) / (curW || 1), 0.5);
+    scale = Math.max(fit, 1.15); applyScale();
+  });
+
+  render(DRILL.root, false);
+})();
 
 // 目录生成
 (function buildToc() {
