@@ -58,8 +58,50 @@
   code { font-family: Consolas, "Courier New", monospace; font-size: .92em; }
   p code, li code, td code { background: var(--panel2); padding: 1px 5px; border-radius: 4px; color: var(--accent); }
   .note { border-left: 3px solid var(--warn); background: rgba(227,179,65,.08); padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 14px; }
-  /* 层级图 */
+  /* 层级示意图 */
   .tree { font-family: Consolas, monospace; font-size: 13.5px; line-height: 1.7; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px; overflow-x: auto; white-space: pre; color: #c9d7e8; }
+  .dia-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin: 12px 0; overflow-x: auto; }
+  .dia-wrap svg { display: block; width: 100%; height: auto; max-width: 920px; }
+  .wire { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 7 7; animation: wireflow 1.2s linear infinite; }
+  @keyframes wireflow { to { stroke-dashoffset: -28; } }
+  .dia-box { fill: var(--panel2); stroke: var(--line); }
+  .dia-box-dut { fill: #1b2634; stroke: var(--accent); }
+  .dia-box-dash { fill: #1b2634; stroke: var(--muted); stroke-dasharray: 5 4; }
+  .dia-title { fill: var(--accent); font-size: 14px; font-weight: 600; }
+  .dia-sub { fill: var(--muted); font-size: 10.5px; }
+  .dia-txt { fill: var(--fg); font-size: 11px; }
+  .dia-txt-mono { fill: #c9d7e8; font-size: 10.5px; font-family: Consolas, monospace; }
+  .dia-lbl { fill: var(--muted); font-size: 11px; }
+  .dia-port { fill: var(--accent2); }
+  .dia-arrow { fill: var(--accent); }
+  /* 可下钻层级框图 */
+  .drill-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 12px 0; }
+  #drillCrumb { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .drill-crumb {
+    background: var(--panel2); color: var(--muted); border: 1px solid var(--line);
+    border-radius: 20px; padding: 3px 12px; font-size: 12.5px; cursor: pointer; font-family: inherit;
+  }
+  .drill-crumb:hover, .drill-crumb.current { color: var(--accent); border-color: var(--accent); }
+  #drillScene { overflow-x: auto; }
+  #drillScene svg { display: block; width: 100%; height: auto; }
+  .drill-box { fill: var(--panel2); stroke: var(--line); stroke-width: 1.5; }
+  .drill-box.deep { stroke: var(--accent); stroke-width: 2; }
+  .drill-box.ext { fill: #1b2634; stroke: var(--muted); stroke-dasharray: 5 4; }
+  .drill-g { cursor: pointer; }
+  .drill-g:hover .drill-box { stroke: var(--accent2); }
+  .drill-box-title { fill: var(--fg); font-size: 13px; font-weight: 600; }
+  .drill-box-sub { fill: var(--muted); font-size: 10px; }
+  .drill-box-hint { fill: var(--accent); font-size: 10px; }
+  .drill-wire-label { fill: var(--muted); font-size: 10.5px; }
+  .drill-port-label { fill: var(--muted); font-size: 9.5px; }
+  .drill-head { margin-bottom: 6px; }
+  .drill-title { color: var(--accent); font-weight: 600; font-size: 14px; }
+  .drill-file { font-size: 12px; }
+  .drill-desc { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  #drillHint { color: var(--muted); font-size: 12px; margin-top: 8px; }
+  #drillPorts { margin-top: 10px; border-top: 1px dashed var(--line); padding-top: 8px; }
+  .drill-port-title { margin-bottom: 6px; font-size: 14px; }
+  .drill-port-none { color: var(--muted); font-size: 13px; }
   /* 任务清单 */
   #taskList { list-style: none; }
   #taskList li {
@@ -123,7 +165,7 @@
     <section id="overview" data-title="工程概览">
       <h2>① 工程概览</h2>
       <p>__OVERVIEW__</p>
-      <div class="note">💡 学习建议：先读概览，再按模块层级逐层深入；每读完一个模块，回到学习任务清单勾选完成。</div>
+      <div class="note">💡 学习建议：先读概览，再进入第③章的框图逐层点击下钻；每看完一个模块，回到学习任务清单勾选完成。</div>
     </section>
 
     <!-- ② 目录结构 -->
@@ -133,11 +175,17 @@
       <p class="muted">说明：IP 核、仿真与编译产物目录仅列出名称，学习重点在 RTL 与约束文件。</p>
     </section>
 
-    <!-- ③ 模块层级 -->
+    <!-- ③ 模块层级（可点击下钻） -->
     <section id="hierarchy" data-title="模块层级">
-      <h2>③ 模块层级</h2>
-      <p>自顶向下的模块调用关系：</p>
-      <div class="tree">__HIERARCHY__</div>
+      <h2>③ 模块层级（可点击下钻）</h2>
+      <p>系统模块框图：<b>点击带「点击进入 ↓」的方块</b>进入其内部框图，逐层深入，每一层都是信号流动图；面包屑或 Esc 返回。</p>
+      <div class="drill-wrap">
+        <div id="drillCrumb"></div>
+        <div class="drill-head" id="drillInfo"></div>
+        <div id="drillScene"></div>
+        <div id="drillPorts"></div>
+        <div id="drillHint"></div>
+      </div>
       <p class="muted">各模块职责速览：</p>
       __MODULE_CARDS__
     </section>
@@ -202,7 +250,211 @@ const QUIZ = [];
 // 术语表：{ term, def }
 const GLOSSARY = [];
 
+// 层级框图（可点击下钻）：
+//   root 为起始场景 id；scenes[id] = { title, file?, desc?, w, h, boxes[], wires[] }
+//   box:  { id, label, sub?, x, y, w, h, scene?, kind? }
+//         scene 指向子场景 id（点击下钻）；kind:'ext' 表示外部端子（虚线框）
+//   wire: { from, to, label? }  // 端口位置由渲染器自动计算，label 标注在连线上
+// 叶子模块的端口表放在 PORTS 中：{ boxId: [{name, dir, width, desc}] }
+const DRILL = { root: 'top', scenes: {} };
+const PORTS = {};
+
 // ================== 以下为页面逻辑，无需修改 ==================
+
+// 下钻框图渲染器
+(function buildDrill() {
+  const crumbEl = document.getElementById('drillCrumb');
+  const sceneEl = document.getElementById('drillScene');
+  const infoEl = document.getElementById('drillInfo');
+  const hintEl = document.getElementById('drillHint');
+  const stack = [];
+  const NS = 'http://www.w3.org/2000/svg';
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  function distribute(n, top, bot) {
+    if (n <= 0) return [];
+    const step = (bot - top) / (n + 1);
+    return Array.from({ length: n }, (_, i) => +(top + step * (i + 1)).toFixed(1));
+  }
+
+  function render(sceneId, push) {
+    if (push) stack.push(sceneId);
+    while (stack.length && !DRILL.scenes[stack[stack.length - 1]]) stack.pop();
+    if (!stack.length) stack.push(DRILL.root);
+    const scene = DRILL.scenes[stack[stack.length - 1]];
+    if (!scene) { sceneEl.innerHTML = '<p class="muted">框图数据未生成。</p>'; return; }
+
+    crumbEl.innerHTML = '';
+    stack.forEach((sid, i) => {
+      const s = DRILL.scenes[sid];
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'drill-crumb' + (i === stack.length - 1 ? ' current' : '');
+      b.textContent = s.title;
+      if (i < stack.length - 1) b.addEventListener('click', () => { stack.length = i + 1; render(stack[stack.length - 1], false); });
+      crumbEl.appendChild(b);
+    });
+
+    infoEl.innerHTML = '';
+    const head = document.createElement('div');
+    head.className = 'drill-head';
+    head.innerHTML = '<span class="drill-title">' + esc(scene.title) + '</span>'
+      + (scene.file ? ' <code class="drill-file">' + esc(scene.file) + '</code>' : '')
+      + (scene.desc ? '<div class="drill-desc">' + esc(scene.desc) + '</div>' : '');
+    infoEl.appendChild(head);
+
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + scene.w + ' ' + scene.h);
+    const boxMap = {};
+    scene.boxes.forEach(bx => { boxMap[bx.id] = bx; });
+    const inMap = {}, outMap = {};
+    scene.wires.forEach((w, wi) => {
+      (inMap[w.to] = inMap[w.to] || []).push(wi);
+      (outMap[w.from] = outMap[w.from] || []).push(wi);
+    });
+    const portY = {};
+    scene.boxes.forEach(bx => {
+      const ins = inMap[bx.id] || [], outs = outMap[bx.id] || [];
+      const topY = bx.y + 42, botY = bx.y + bx.h - 14;
+      const inYs = distribute(ins.length, topY, botY);
+      const outYs = distribute(outs.length, topY, botY);
+      ins.forEach((wi, i) => { portY['i' + wi] = inYs[i]; });
+      outs.forEach((wi, i) => { portY['o' + wi] = outYs[i]; });
+    });
+
+    scene.boxes.forEach(bx => {
+      const g = document.createElementNS(NS, 'g');
+      g.setAttribute('class', 'drill-g');
+      const r = document.createElementNS(NS, 'rect');
+      r.setAttribute('x', bx.x); r.setAttribute('y', bx.y);
+      r.setAttribute('width', bx.w); r.setAttribute('height', bx.h); r.setAttribute('rx', 8);
+      r.setAttribute('class', bx.scene ? 'drill-box deep' : (bx.kind === 'ext' ? 'drill-box ext' : 'drill-box'));
+      g.appendChild(r);
+      const t1 = document.createElementNS(NS, 'text');
+      t1.setAttribute('x', bx.x + bx.w / 2); t1.setAttribute('y', bx.y + 22);
+      t1.setAttribute('text-anchor', 'middle'); t1.setAttribute('class', 'drill-box-title');
+      t1.textContent = bx.label;
+      g.appendChild(t1);
+      if (bx.sub) {
+        const t2 = document.createElementNS(NS, 'text');
+        t2.setAttribute('x', bx.x + bx.w / 2); t2.setAttribute('y', bx.y + 38);
+        t2.setAttribute('text-anchor', 'middle'); t2.setAttribute('class', 'drill-box-sub');
+        t2.textContent = bx.sub;
+        g.appendChild(t2);
+      }
+      if (bx.scene) {
+        const t3 = document.createElementNS(NS, 'text');
+        t3.setAttribute('x', bx.x + bx.w / 2); t3.setAttribute('y', bx.y + bx.h - 8);
+        t3.setAttribute('text-anchor', 'middle'); t3.setAttribute('class', 'drill-box-hint');
+        t3.textContent = '点击进入 ↓';
+        g.appendChild(t3);
+      }
+      const inNames = bx.ins || [], outNames = bx.outs || [];
+      (inMap[bx.id] || []).forEach((wi, i) => {
+        const y = portY['i' + wi];
+        const s = document.createElementNS(NS, 'rect');
+        s.setAttribute('x', bx.x - 3); s.setAttribute('y', y - 3);
+        s.setAttribute('width', 6); s.setAttribute('height', 6); s.setAttribute('class', 'dia-port');
+        g.appendChild(s);
+        if (inNames[i]) {
+          const t = document.createElementNS(NS, 'text');
+          t.setAttribute('x', bx.x + 8); t.setAttribute('y', y + 3.5);
+          t.setAttribute('class', 'drill-port-label');
+          t.textContent = inNames[i];
+          g.appendChild(t);
+        }
+      });
+      (outMap[bx.id] || []).forEach((wi, i) => {
+        const y = portY['o' + wi];
+        const s = document.createElementNS(NS, 'rect');
+        s.setAttribute('x', bx.x + bx.w - 3); s.setAttribute('y', y - 3);
+        s.setAttribute('width', 6); s.setAttribute('height', 6); s.setAttribute('class', 'dia-port');
+        g.appendChild(s);
+        if (outNames[i]) {
+          const t = document.createElementNS(NS, 'text');
+          t.setAttribute('x', bx.x + bx.w - 8); t.setAttribute('y', y + 3.5);
+          t.setAttribute('text-anchor', 'end');
+          t.setAttribute('class', 'drill-port-label');
+          t.textContent = outNames[i];
+          g.appendChild(t);
+        }
+      });
+      g.addEventListener('click', ev => {
+        ev.stopPropagation();
+        if (bx.scene) { render(bx.scene, true); }
+        else { showPorts(bx); }
+      });
+      svg.appendChild(g);
+    });
+
+    scene.wires.forEach((w, wi) => {
+      const a = boxMap[w.from], b = boxMap[w.to];
+      if (!a || !b) return;
+      const sx = a.x + a.w, sy = portY['o' + wi], ex = b.x, ey = portY['i' + wi];
+      const mid = (sx + ex) / 2;
+      const d = Math.abs(sy - ey) < 3
+        ? 'M' + sx + ',' + sy + ' H' + ex
+        : 'M' + sx + ',' + sy + ' H' + mid + ' V' + ey + ' H' + ex;
+      const p = document.createElementNS(NS, 'path');
+      p.setAttribute('d', d); p.setAttribute('class', 'wire');
+      svg.appendChild(p);
+      const dir = ex >= sx ? 1 : -1;
+      const tipX = ex + dir * 4;
+      const pol = document.createElementNS(NS, 'polygon');
+      pol.setAttribute('points', (tipX - dir * 9) + ',' + (ey - 5) + ' ' + tipX + ',' + ey + ' ' + (tipX - dir * 9) + ',' + (ey + 5));
+      pol.setAttribute('class', 'dia-arrow');
+      svg.appendChild(pol);
+      if (w.label) {
+        const t = document.createElementNS(NS, 'text');
+        t.setAttribute('x', mid);
+        t.setAttribute('y', (sy + ey) / 2 - 7);
+        t.setAttribute('text-anchor', 'middle');
+        t.setAttribute('class', 'drill-wire-label');
+        t.textContent = w.label;
+        svg.appendChild(t);
+      }
+    });
+
+    sceneEl.innerHTML = '';
+    sceneEl.appendChild(svg);
+    hintEl.textContent = '提示：点击带「点击进入 ↓」的方块下钻一层；点击其他方块查看端口/说明；点击面包屑或按 Esc 返回上层。';
+  }
+
+  function showPorts(bx) {
+    const list = PORTS[bx.id];
+    const panel = document.getElementById('drillPorts');
+    panel.innerHTML = '';
+    const h = document.createElement('div');
+    h.className = 'drill-port-title';
+    h.innerHTML = '<b>' + esc(bx.label) + '</b>'
+      + (bx.file ? ' <code>' + esc(bx.file) + '</code>' : '');
+    panel.appendChild(h);
+    if (!list || !list.length) {
+      const p = document.createElement('div');
+      p.className = 'drill-port-none';
+      p.textContent = bx.kind === 'ext' ? '外部端子，方向见连线箭头。' : '该模块为内部逻辑或 IP 核，无独立端口表；详细信号见下方表格。';
+      panel.appendChild(p);
+    } else {
+      const tbl = document.createElement('table');
+      tbl.innerHTML = '<tr><th>信号</th><th>方向</th><th>位宽</th><th>说明</th></tr>';
+      list.forEach(pt => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td><code>' + esc(pt.name) + '</code></td><td>' + esc(pt.dir) + '</td><td>' + esc(pt.width) + '</td><td>' + esc(pt.desc) + '</td>';
+        tbl.appendChild(tr);
+      });
+      panel.appendChild(tbl);
+    }
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  document.addEventListener('keydown', ev => {
+    if ((ev.key === 'Escape' || ev.key === 'Backspace') && stack.length > 1) {
+      stack.pop(); render(stack[stack.length - 1], false);
+    }
+  });
+
+  render(DRILL.root, false);
+})();
 
 // 目录生成
 (function buildToc() {
